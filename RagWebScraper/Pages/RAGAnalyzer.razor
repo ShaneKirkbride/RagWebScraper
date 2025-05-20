@@ -1,0 +1,124 @@
+﻿@page "/analyze"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject KeywordSentimentSummaryService SummaryService
+@inject AppStateService AppState
+
+@implements IDisposable
+@using RagWebScraper.Models
+@using RagWebScraper.Services
+@using RagWebScraper.Shared
+
+<h2 class="mb-4 text-primary">Analyze Web Pages</h2>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Enter URLs (one per line):</label>
+            <textarea class="form-control" rows="4" @bind="urlsInput"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Enter search keywords (comma-separated):</label>
+            <input type="text" class="form-control" @bind="searchTerms" />
+        </div>
+
+        <button class="btn btn-primary" @onclick="SubmitForAnalysis">
+            <i class="bi bi-search"></i> Analyze
+        </button>
+    </div>
+</div>
+
+@if (AppState.UrlAnalysisResults != null && AppState.UrlAnalysisResults.Any())
+{
+    <h3 class="text-success">Analysis Results</h3>
+    <div class="col-md-6">
+        @if (!string.IsNullOrWhiteSpace(AppState.UrlKeywordSummary))
+        {
+            <div class="alert alert-info">
+                <strong>AI Summary:</strong><br />
+                @AppState.UrlKeywordSummary
+            </div>
+        }
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <PageSentimentChart Results="AppState.UrlAnalysisResults" />
+        </div>
+        <div class="col-md-6">
+            <KeywordSentimentChart Results="AppState.UrlAnalysisResults" />
+        </div>
+    </div>
+
+    @foreach (var res in AppState.UrlAnalysisResults)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>@res.Url</h5>
+                <p>
+                    Page Sentiment Score:
+                    <span class="badge bg-primary">@res.PageSentimentScore</span>
+                </p>
+
+                <h6>Keyword Sentiments:</h6>
+                <ul>
+                    @foreach (var kv in res.KeywordSentimentScores)
+                    {
+                        <li>
+                            <strong>@kv.Key</strong> :
+                            <span class="badge bg-success">@kv.Value</span>
+                        </li>
+                    }
+                </ul>
+
+                <KeywordChart Frequencies="@res.KeywordFrequencies" />
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private string urlsInput;
+    private string searchTerms;
+
+    private async Task SubmitForAnalysis()
+    {
+        var request = new UrlAnalysisRequest
+            {
+                Urls = urlsInput
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList(),
+                Keywords = searchTerms
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList()
+            };
+
+        var apiUrl = Navigation.BaseUri + "api/rag/analyze";
+        var response = await Http.PostAsJsonAsync(apiUrl, request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            AppState.SetUrlResults([]);
+            AppState.SetUrlKeywordSummary("Error during analysis.");
+            return;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];
+
+        AppState.SetUrlResults(result);
+
+        // Generate and store summary
+        var summary = await SummaryService.GenerateSummaryAsync(result);
+        AppState.SetUrlKeywordSummary(summary);
+    }
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+    }
+}

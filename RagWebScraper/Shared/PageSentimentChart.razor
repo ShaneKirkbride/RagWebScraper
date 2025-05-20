@@ -1,0 +1,64 @@
+﻿@using RagWebScraper.Models
+@using Blazorise.Charts
+
+@if (Results == null || !Results.Any())
+{
+    <div class="alert alert-info">No page sentiment data available.</div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">Page-Level Sentiment</div>
+        <div class="card-body">
+            <BarChart @ref="pageChart" TItem="float" Datasets="@(new[] { pageDataset })" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<AnalysisResult> Results { get; set; }
+
+    private BarChart<float> pageChart;
+    private BarChartDataset<float> pageDataset = new()
+        {
+            Label = "Page Sentiment",
+            BackgroundColor = "rgba(54, 162, 235, 0.6)",
+            BorderColor = "rgba(54, 162, 235, 1)",
+            BorderWidth = 1
+        };
+
+    private List<string> pageLabels = new();
+    private bool chartNeedsUpdate = false;
+
+    protected override void OnParametersSet()
+    {
+        if (pageDataset.Data != null)
+        {
+            pageDataset.Data.Clear();
+        }
+        else
+        {
+            pageDataset.Data = new List<float>();
+        }
+
+        pageLabels.Clear();
+
+        foreach (var result in Results)
+        {
+            pageDataset.Data.Add(result.PageSentimentScore);
+            pageLabels.Add(result.Url);
+        }
+
+        chartNeedsUpdate = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (chartNeedsUpdate && pageChart != null)
+        {
+            await pageChart.Clear();
+            await pageChart.AddLabelsDatasetsAndUpdate(pageLabels, pageDataset);
+            chartNeedsUpdate = false;
+        }
+    }
+}

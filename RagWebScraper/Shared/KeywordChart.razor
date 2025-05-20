@@ -1,0 +1,70 @@
+﻿@using Blazorise.Charts
+
+@if (Frequencies == null || !Frequencies.Any())
+{
+    <div class="alert alert-warning">No keywords found.</div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            Keyword Frequencies
+        </div>
+        <div class="card-body">
+            <BarChart @ref="keywordChart" TItem="int" Datasets="@(new[] { keywordData })" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Dictionary<string, int> Frequencies { get; set; }
+
+    private BarChart<int> keywordChart;
+    private BarChartDataset<int> keywordData = new()
+        {
+            Label = "Keyword Count",
+            BackgroundColor = "rgba(75, 192, 192, 0.6)",
+            BorderColor = "rgba(75, 192, 192, 1)",
+            BorderWidth = 1
+        };
+
+    private List<string> keywordLabels = new();
+    private bool chartNeedsUpdate = false;
+
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($"Loaded {Frequencies?.Count ?? 0} keyword frequencies");
+
+        if (keywordData.Data != null)
+        {
+            keywordData.Data.Clear();
+        }
+        else
+        {
+            keywordData.Data = new List<int>();
+        }
+
+        keywordLabels.Clear();
+
+        if (Frequencies != null)
+        {
+            foreach (var kv in Frequencies)
+            {
+                keywordLabels.Add(kv.Key);
+                keywordData.Data.Add(kv.Value);
+            }
+        }
+
+        chartNeedsUpdate = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (chartNeedsUpdate && keywordChart != null)
+        {
+            await keywordChart.Clear();
+            await keywordChart.AddLabelsDatasetsAndUpdate(keywordLabels, keywordData);
+            chartNeedsUpdate = false;
+        }
+    }
+}

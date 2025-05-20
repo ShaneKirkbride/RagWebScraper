@@ -1,0 +1,79 @@
+﻿@using RagWebScraper.Models
+@using Blazorise.Charts
+
+@if (Results == null || !Results.Any())
+{
+    <div class="alert alert-info">No keyword sentiment data available.</div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">Keyword-Level Sentiment (Aggregated per Keyword)</div>
+        <div class="card-body">
+            <BarChart @ref="keywordChart" TItem="double" Datasets="@(new[] { keywordDataset })" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<AnalysisResult> Results { get; set; }
+
+    private BarChart<double> keywordChart;
+    private BarChartDataset<double> keywordDataset = new()
+        {
+            Label = "Keyword Sentiment",
+            BackgroundColor = "rgba(255, 159, 64, 0.6)",
+            BorderColor = "rgba(255, 159, 64, 1)",
+            BorderWidth = 1
+        };
+
+    private List<string> keywords = new();
+    private bool chartNeedsUpdate = false;
+
+    protected override void OnParametersSet()
+    {
+        if (Results == null || !Results.Any())
+            return;
+
+        if (keywordDataset.Data != null)
+        {
+            keywordDataset.Data.Clear();
+            keywords.Clear();
+        }
+        else
+        {
+            keywordDataset.Data = new List<double>();
+        }
+
+        var aggregated = new Dictionary<string, List<float>>();
+
+        foreach (var result in Results)
+        {
+            foreach (var kv in result.KeywordSentimentScores)
+            {
+                if (!aggregated.ContainsKey(kv.Key))
+                    aggregated[kv.Key] = new List<float>();
+
+                aggregated[kv.Key].Add(kv.Value);
+            }
+        }
+
+        foreach (var kv in aggregated)
+        {
+            keywords.Add(kv.Key);
+            keywordDataset.Data.Add(kv.Value.Average());
+        }
+
+        chartNeedsUpdate = true; // defer update until chart ref is ready
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (chartNeedsUpdate && keywordChart != null)
+        {
+            await keywordChart.Clear();
+            await keywordChart.AddLabelsDatasetsAndUpdate(keywords, keywordDataset);
+            chartNeedsUpdate = false;
+        }
+    }
+}

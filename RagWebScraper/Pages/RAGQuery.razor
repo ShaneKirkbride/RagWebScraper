@@ -1,0 +1,69 @@
+﻿@page "/query"
+@using RagWebScraper.Models
+@using RagWebScraper.Services
+@using static System.Net.WebRequestMethods
+@inject EmbeddingService EmbeddingService
+@inject VectorStoreService VectorStoreService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h2 class="mb-4 text-primary">Query RAG Knowledge Base</h2>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Enter your query:</label>
+            <input type="text" class="form-control" @bind="userQuery" placeholder="Ask a question..." />
+        </div>
+        <button class="btn btn-success" @onclick="QueryRagAsync">
+            <i class="bi bi-search"></i> Query RAG
+        </button>
+    </div>
+</div>
+
+@if (results != null && results.Any())
+{
+    <h4>Top Retrieved Chunks:</h4>
+    @foreach (var result in results)
+    {
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="text-wrap" style="white-space: pre-wrap;">@result</div>
+            </div>
+        </div>
+    }
+}
+
+
+@code {
+    private string? userQuery;
+    private List<string>? results;
+
+    private async Task QueryRagAsync()
+    {
+        if (string.IsNullOrWhiteSpace(userQuery))
+            return;
+
+        try
+        {
+            var request = new RAGQueryRequest { Query = userQuery };
+            var apiUrl = Navigation.BaseUri + "api/rag/query";
+            var response = await Http.PostAsJsonAsync(apiUrl, request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error from API: {response.StatusCode} - {errorContent}");
+                results = new List<string> { $"Error: {response.StatusCode} - {errorContent}" };
+                return;
+            }
+
+            results = await response.Content.ReadFromJsonAsync<List<string>>();
+        }
+        catch (Exception ex)
+        {
+            results = new List<string> { $"Error querying RAG: {ex.Message}" };
+        }
+    }
+}
+

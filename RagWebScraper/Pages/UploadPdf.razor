@@ -1,0 +1,155 @@
+﻿@page "/upload-pdf"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AppStateService AppState
+@inject KeywordSentimentSummaryService SummaryService
+
+@implements IDisposable
+@using RagWebScraper.Models
+@using RagWebScraper.Services
+@using RagWebScraper.Shared
+@using Microsoft.AspNetCore.Components.Forms
+
+<h3 class="mb-3 text-primary">Upload and Analyze PDFs</h3>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Enter search keywords (comma-separated):</label>
+            <input type="text" class="form-control" @bind="searchTerms" />
+        </div>
+
+        <InputFile OnChange="HandlePdfUpload" multiple accept=".pdf" disabled="@string.IsNullOrWhiteSpace(searchTerms)" />
+
+        @if (!string.IsNullOrWhiteSpace(uploadStatus))
+        {
+            <p class="text-success">@uploadStatus</p>
+        }
+    </div>
+</div>
+
+@if (AppState.PdfAnalysisResults?.Any() == true)
+{
+    <h3 class="text-success">PDF Analysis Results</h3>
+    <div class="col-md-6">
+        @if (!string.IsNullOrWhiteSpace(AppState.PdfKeywordSummary))
+        {
+            <div class="alert alert-info">
+                <strong>AI Summary:</strong><br />
+                @AppState.PdfKeywordSummary
+            </div>
+        }
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <PageSentimentChart Results="GetAnalysisResults()" />
+        </div>
+        <div class="col-md-6">
+            <KeywordSentimentChart Results="GetAnalysisResults()" />
+        </div>
+    </div>
+
+    @foreach (var summary in AppState.PdfAnalysisResults)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>@summary.FileName</h5>
+                <p>
+                    Page Sentiment Score:
+                    <span class="badge bg-primary">@summary.Sentiment</span>
+                </p>
+
+                @if (summary.KeywordSentiments?.Any() == true)
+                {
+                    <h6>Keyword Sentiments:</h6>
+                    <ul>
+                        @foreach (var kv in summary.KeywordSentiments)
+                        {
+                            <li>
+                                <strong>@kv.Key</strong> :
+                                <span class="badge bg-success">@kv.Value</span>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @if (summary.KeywordFrequencies?.Count > 0)
+                {
+                    <KeywordChart Frequencies="@summary.KeywordFrequencies" />
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private string? uploadStatus;
+    private string searchTerms;
+
+    private async Task HandlePdfUpload(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount == 0)
+        {
+            uploadStatus = "No files selected.";
+            return;
+        }
+
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(searchTerms ?? ""), "keywords");
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            var streamContent = new StreamContent(file.OpenReadStream(20_000_000));
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(streamContent, "files", file.Name);
+        }
+
+        var apiUrl = Navigation.BaseUri + "api/pdf/analyze";
+        var response = await Http.PostAsync(apiUrl, content);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<List<FileSentimentSummary>>();
+            var parsed = result ?? [];
+
+            AppState.SetPdfResults(parsed);
+
+            var converted = parsed.Select(s => new AnalysisResult
+                {
+                    Url = s.FileName,
+                    PageSentimentScore = s.Sentiment,
+                    KeywordFrequencies = s.KeywordFrequencies ?? new(),
+                    KeywordSentimentScores = s.KeywordSentiments ?? new()
+                }).ToList();
+
+            var summary = await SummaryService.GenerateSummaryAsync(converted);
+            AppState.SetPdfKeywordSummary(summary);
+
+            uploadStatus = "PDFs analyzed and ingested into RAG successfully.";
+        }
+        else
+        {
+            uploadStatus = $"Upload failed: {response.ReasonPhrase}";
+        }
+    }
+
+    private List<AnalysisResult> GetAnalysisResults() =>
+        AppState.PdfAnalysisResults.Select(s => new AnalysisResult
+            {
+                Url = s.FileName,
+                PageSentimentScore = s.Sentiment,
+                KeywordFrequencies = s.KeywordFrequencies ?? new(),
+                KeywordSentimentScores = s.KeywordSentiments ?? new()
+            }).ToList();
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+    }
+}

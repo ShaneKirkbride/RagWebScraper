@@ -1,0 +1,39 @@
+﻿@using RagWebScraper.Models
+@using RagWebScraper.Services
+@inject KeywordSentimentSummaryService SummaryService
+
+@if (Results == null || !Results.Any())
+{
+    <div class="alert alert-info">No data available for keyword sentiment summary.</div>
+}
+else
+{
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-secondary text-white">
+            AI Summary of Keyword Sentiments
+        </div>
+        <div class="card-body">
+            @if (summary == null)
+            {
+                <p><em>Generating summary...</em></p>
+            }
+            else
+            {
+                <p>@summary</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<AnalysisResult> Results { get; set; }
+    private string? summary;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Results != null && Results.Any())
+        {
+            summary = await SummaryService.GenerateSummaryAsync(Results);
+        }
+    }
+}
