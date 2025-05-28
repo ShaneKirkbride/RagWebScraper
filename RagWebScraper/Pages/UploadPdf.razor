@@ -3,6 +3,8 @@
 @inject NavigationManager Navigation
 @inject AppStateService AppState
 @inject KeywordSentimentSummaryService SummaryService
+@inject IServiceProvider ServiceProvider
+@inject IRagAnalyzerService RagAnalyzer
 
 @implements IDisposable
 @using RagWebScraper.Models
@@ -40,6 +42,12 @@
             </div>
         }
     </div>
+
+    @if (AppState.PdfCrossDocLinks?.Any() == true)
+    {
+        <h3 class="text-primary">Cross-Document Semantic Links</h3>
+        <CrossDocLinks Links="AppState.PdfCrossDocLinks" />
+    }
 
     <div class="row mb-4">
         <div class="col-md-6">
@@ -81,6 +89,8 @@
             </div>
         </div>
     }
+
+
 }
 
 @code {
@@ -115,16 +125,35 @@
 
             AppState.SetPdfResults(parsed);
 
-            var converted = parsed.Select(s => new AnalysisResult
+            var converted = parsed.Select(s =>
+            {
+            var result = new AnalysisResult(Enumerable.Empty<LinkedPassage>())
                 {
                     Url = s.FileName,
                     PageSentimentScore = s.Sentiment,
                     KeywordFrequencies = s.KeywordFrequencies ?? new(),
                     KeywordSentimentScores = s.KeywordSentiments ?? new()
-                }).ToList();
+                };
+            return result;
+            }).ToList();
 
             var summary = await SummaryService.GenerateSummaryAsync(converted);
             AppState.SetPdfKeywordSummary(summary);
+
+            // 🔥 NEW: Extract raw text and run semantic linking
+            var docChunks = parsed
+                .Where(p => !string.IsNullOrWhiteSpace(p.RawText))
+                .Select(p => new DocumentChunk(p.FileName, p.RawText!))
+                .ToList();
+
+            var docSet = new DocumentSet(docChunks
+                .GroupBy(c => c.SourceId)
+                .Select(g => new AnalyzedDocument(g.Key, g.ToList()))
+                .ToList());
+
+            var analysis = await RagAnalyzer.AnalyzeAsync(docSet);
+            AppState.SetPdfCrossDocLinks(analysis.Links.ToList());
+            AppState.SetEntityGraphs(analysis.EntityGraphs);
 
             uploadStatus = "PDFs analyzed and ingested into RAG successfully.";
         }
@@ -135,7 +164,7 @@
     }
 
     private List<AnalysisResult> GetAnalysisResults() =>
-        AppState.PdfAnalysisResults.Select(s => new AnalysisResult
+        AppState.PdfAnalysisResults.Select(s => new AnalysisResult(Enumerable.Empty<LinkedPassage>())
             {
                 Url = s.FileName,
                 PageSentimentScore = s.Sentiment,

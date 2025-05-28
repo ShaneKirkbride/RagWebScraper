@@ -6,10 +6,10 @@ using RagWebScraper.Services;
 [Route("api/rag")]
 public class RAGQueryController : ControllerBase
 {
-    private readonly EmbeddingService _embedding;
+    private readonly IEmbeddingService _embedding;
     private readonly VectorStoreService _vectorStore;
 
-    public RAGQueryController(EmbeddingService embedding, VectorStoreService vectorStore)
+    public RAGQueryController(IEmbeddingService embedding, VectorStoreService vectorStore)
     {
         _embedding = embedding;
         _vectorStore = vectorStore;

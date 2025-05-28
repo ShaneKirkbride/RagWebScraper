@@ -8,12 +8,43 @@ public class AppStateService
     public List<AnalysisResult> UrlAnalysisResults { get; private set; } = new();
 
     public List<FileSentimentSummary> PdfAnalysisResults { get; private set; } = new();
+    public List<EntityGraph> EntityGraphs { get; private set; } = new();
 
     public string PdfKeywordSummary { get; private set; } = string.Empty;
 
     public string UrlKeywordSummary { get; private set; } = string.Empty;
 
+    public Dictionary<string, EntityGraph> GraphsByDocument { get; private set; } = new();
+
     public event Action? OnChange;
+
+    public List<LinkedPassage> PdfCrossDocLinks { get; private set; } = [];
+
+    public void SetEntityGraphs(IEnumerable<EntityGraph> graphs)
+    {
+        var list = graphs.ToList();
+        EntityGraphs = list;
+        GraphsByDocument = list.ToDictionary(g => g.SourceId);
+        NotifyStateChanged();
+    }
+
+    public void SetEntityGraphsByDocument(IEnumerable<EntityGraph> graphs)
+    {
+        GraphsByDocument = graphs.ToDictionary(g => g.SourceId);
+        NotifyStateChanged();
+    }
+
+    public void SetAllEntityGraphs(List<EntityGraph> graphs)
+    {
+        EntityGraphs = graphs;
+        NotifyStateChanged();
+    }
+
+    public void SetPdfCrossDocLinks(List<LinkedPassage> links)
+    {
+        PdfCrossDocLinks = links;
+        NotifyStateChanged();
+    }
 
     public void SetUrlResults(List<AnalysisResult> results)
     {

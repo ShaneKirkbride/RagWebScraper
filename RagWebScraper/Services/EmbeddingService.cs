@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace RagWebScraper.Services
 {
-    public class EmbeddingService
+    public class EmbeddingService : IEmbeddingService
     {
         private readonly EmbeddingClient _client;
 
@@ -42,6 +42,4 @@ namespace RagWebScraper.Services
             return result.Select(e => e.ToFloats().ToArray()).ToList();
         }
     }
-
-
 }

@@ -10,7 +10,7 @@ public class PdfUploadController : ControllerBase
     private readonly PdfTextExtractorService _extractor;
     private readonly SentimentAnalyzerService _sentiment;
     private readonly TextChunker _chunker;
-    private readonly EmbeddingService _embedding;
+    private readonly IEmbeddingService _embedding;
     private readonly VectorStoreService _store;
     private readonly KeywordExtractorService _keywordExtractor;
     private readonly KeywordContextSentimentService _keywordContextSentimentService;
@@ -21,7 +21,7 @@ public class PdfUploadController : ControllerBase
         PdfTextExtractorService extractor,
         SentimentAnalyzerService sentiment,
         TextChunker chunker,
-        EmbeddingService embedding,
+        IEmbeddingService embedding,
         VectorStoreService store,
         KeywordExtractorService keywordExtractor,
         KeywordContextSentimentService keywordContextSentimentService,
@@ -55,12 +55,12 @@ public class PdfUploadController : ControllerBase
                 continue;
 
             using var stream = file.OpenReadStream();
-            var text = _extractor.ExtractText(stream);
-            var sentiment = _sentiment.AnalyzeSentiment(text);
-            var frequencies = _keywordExtractor.ExtractKeywords(text, keywordList);
-            var keywordSentiments = _keywordContextSentimentService.ExtractKeywordSentiments(text, keywordList);
+            var extractedText = _extractor.ExtractText(stream);
+            var sentiment = _sentiment.AnalyzeSentiment(extractedText);
+            var frequencies = _keywordExtractor.ExtractKeywords(extractedText, keywordList);
+            var keywordSentiments = _keywordContextSentimentService.ExtractKeywordSentiments(extractedText, keywordList);
 
-            await _chunkIngestor.IngestChunksAsync(file.FileName, text, new Dictionary<string, object>
+            await _chunkIngestor.IngestChunksAsync(file.FileName, extractedText, new Dictionary<string, object>
             {
                 { "Sentiment", sentiment },
                 { "SourceType", "PDF" }
@@ -71,7 +71,8 @@ public class PdfUploadController : ControllerBase
                 FileName = file.FileName,
                 Sentiment = sentiment,
                 KeywordFrequencies = frequencies,
-                KeywordSentiments = keywordSentiments
+                KeywordSentiments = keywordSentiments,
+                RawText = extractedText
             });
         }
 

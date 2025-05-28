@@ -6,6 +6,10 @@ using RagWebScraper.Services;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Components.Server;
 using RagWebScraper.Shared;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using RagWebScraper.Models;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
@@ -39,10 +43,30 @@ builder.Services.AddSingleton<KeywordContextSentimentService>();
 builder.Services.AddSingleton<SentimentAnalyzerService>();
 builder.Services.AddSingleton<KeywordExtractorService>();
 builder.Services.AddSingleton<TextChunker>();
-builder.Services.AddSingleton<EmbeddingService>(sp =>
+builder.Services.AddSingleton<IEmbeddingService>(
     new EmbeddingService(openAiKey));
-builder.Services.AddSingleton<RAGService>();
 builder.Services.AddSingleton<PdfTextExtractorService>();
+
+// Bind settings
+builder.Services.Configure<NerSettings>(
+    builder.Configuration.GetSection("NerSettings"));
+
+// Manually create ONNXNerService with DI-resolved config
+builder.Services.AddSingleton<INerService>(provider =>
+{
+    var config = provider.GetRequiredService<IConfiguration>();
+
+    var modelPath = Path.Combine(AppContext.BaseDirectory, config["NerSettings:ModelPath"]);
+    var vocabPath = Path.Combine(AppContext.BaseDirectory, config["NerSettings:VocabPath"]);
+    var mergesPath = Path.Combine(AppContext.BaseDirectory, config["NerSettings:MergesPath"]);
+    var dictPath = Path.Combine(AppContext.BaseDirectory, config["NerSettings:DictionaryPath"]);
+
+    return new ONNXNerService(modelPath, vocabPath, mergesPath, dictPath);
+});
+
+builder.Services.AddScoped<IEntityGraphExtractor, SpacyEntityGraphExtractor>();
+builder.Services.AddScoped<ICrossDocumentLinker, SemanticCrossLinker>();
+builder.Services.AddScoped<IRagAnalyzerService, RagAnalyzerService>();
 
 // Controllers and Blazor setup
 builder.Services.AddControllers();
