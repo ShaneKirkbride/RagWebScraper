@@ -2,7 +2,7 @@
 
 namespace RagWebScraper.Services
 {
-    public class KeywordExtractorService
+    public class KeywordExtractorService : IKeywordExtractor
     {
         public Dictionary<string, int> ExtractKeywords(string text, List<string> searchTerms)
         {

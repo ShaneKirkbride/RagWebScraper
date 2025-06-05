@@ -10,10 +10,20 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RagWebScraper.Models;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
 
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 1_073_741_824; // 1 GB
+});
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 1_073_741_824; // 1 GB
+});
 // Load config and OpenAI key
 var openAiKey = builder.Configuration["OpenAI:ApiKey"];
 if (string.IsNullOrWhiteSpace(openAiKey))
@@ -36,17 +46,21 @@ builder.Services.AddBootstrap5Components();
 builder.Services.AddHttpClient<IWebScraperService, WebScraperService>();
 builder.Services.AddHttpClient<VectorStoreService>();
 builder.Services.AddHttpClient<QdrantSetupService>();
+builder.Services.AddHttpClient<IPdfScraperService, PdfScraperService>();
 
 // Register backend services
+builder.Services.AddSingleton<PdfResultStore>();
 builder.Services.AddSingleton<KeywordSentimentSummaryService>();
-builder.Services.AddSingleton<KeywordContextSentimentService>();
-builder.Services.AddSingleton<SentimentAnalyzerService>();
-builder.Services.AddSingleton<KeywordExtractorService>();
+builder.Services.AddSingleton<IKeywordContextSentimentService, KeywordContextSentimentService>();
+builder.Services.AddSingleton<ISentimentAnalyzer, SentimentAnalyzerService>();
+builder.Services.AddSingleton<IKeywordExtractor, KeywordExtractorService>();
 builder.Services.AddSingleton<TextChunker>();
 builder.Services.AddSingleton<IEmbeddingService>(
     new EmbeddingService(openAiKey));
-builder.Services.AddSingleton<PdfTextExtractorService>();
-
+builder.Services.AddSingleton<ITextExtractor, PdfTextExtractorService>();
+builder.Services.AddScoped<IAnalysisService, PdfAnalysisService>();
+builder.Services.AddSingleton<IPdfProcessingQueue, PdfProcessingQueue>();
+builder.Services.AddHostedService<PdfProcessingWorker>();
 // Bind settings
 builder.Services.Configure<NerSettings>(
     builder.Configuration.GetSection("NerSettings"));

@@ -13,15 +13,15 @@ public interface IPageAnalyzerService
 public class PageAnalyzerService : IPageAnalyzerService
 {
     private readonly IWebScraperService _scraper;
-    private readonly SentimentAnalyzerService _sentiment;
-    private readonly KeywordExtractorService _keywords;
-    private readonly KeywordContextSentimentService _keywordContextSentimentService;
+    private readonly ISentimentAnalyzer _sentiment;
+    private readonly IKeywordExtractor _keywords;
+    private readonly IKeywordContextSentimentService _keywordContextSentimentService;
 
     public PageAnalyzerService(
         IWebScraperService scraper,
-        SentimentAnalyzerService sentiment,
-        KeywordExtractorService keywords,
-        KeywordContextSentimentService keywordContextSentimentService)
+        ISentimentAnalyzer sentiment,
+        IKeywordExtractor keywords,
+        IKeywordContextSentimentService keywordContextSentimentService)
     {
         _scraper = scraper;
         _sentiment = sentiment;
@@ -43,6 +43,7 @@ public class PageAnalyzerService : IPageAnalyzerService
         };
     }
 }
+
 
 // Controller using SRP and DIP
 [ApiController]

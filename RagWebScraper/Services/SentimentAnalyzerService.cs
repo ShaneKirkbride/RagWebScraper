@@ -4,7 +4,7 @@ using Microsoft.ML.Tokenizers;
 
 namespace RagWebScraper.Services
 {
-    public class SentimentAnalyzerService
+    public class SentimentAnalyzerService : ISentimentAnalyzer
     {
         private readonly MLContext _mlContext;
         private readonly PredictionEngine<SentimentInput, SentimentOutput> _predictionEngine;
@@ -85,7 +85,8 @@ namespace RagWebScraper.Services
             if (result?.logits == null || result.logits.Length < 2)
                 throw new InvalidOperationException($"ONNX model returned invalid logits for input: '{text}'");
 
-            var sentimentScore = result.logits[1] - result.logits[0];
+            float calibratedValue = 3.75F;
+            var sentimentScore = result.logits[1] - result.logits[0] + calibratedValue;
 
             return sentimentScore;
         }

@@ -1,0 +1,114 @@
+﻿@page "/pdf-scraper"
+@using RagWebScraper.Services
+@inject IPdfScraperService PdfScraperService
+@inject IAnalysisService AnalysisService
+
+<h3>PDF Scraper</h3>
+
+<div class="mb-3">
+    <label for="websiteUrl" class="form-label">Website URL</label>
+    <input type="text" id="websiteUrl" class="form-control" @bind="WebsiteUrl" placeholder="https://example.com" />
+
+    <label for="outputDirectory" class="form-label">Output Directory</label>
+    <input type="text" id="outputDirectory" class="form-control" @bind="OutputDirectoryName" placeholder="e.g., MyPdfs" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Select Local Folder (Optional)</label>
+    <InputFile OnChange="HandleDirectoryUpload" multiple webkitdirectory directory />
+</div>
+
+<button class="btn btn-primary" @onclick="ScrapeAndAnalyzePdfs" disabled="@IsProcessing">
+    <span>
+        @if (IsProcessing)
+        {
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <span> Processing...</span>
+        }
+        else
+        {
+            <span>Scrape and Analyze PDFs</span>
+        }
+    </span>
+</button>
+
+@if (SelectedFileNames.Any())
+{
+    <div class="alert alert-secondary">
+        <strong>Files Selected:</strong>
+        <ul>
+            @foreach (var fileName in SelectedFileNames)
+            {
+                <li>@fileName</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(StatusMessage))
+{
+    <div class="alert alert-info mt-3">@StatusMessage</div>
+}
+
+@code {
+    private string WebsiteUrl { get; set; } = string.Empty;
+    private string OutputDirectoryName { get; set; } = "DownloadedPdfs"; // Default value
+    private bool IsProcessing { get; set; } = false;
+    private string StatusMessage { get; set; } = string.Empty;
+    private List<string> SelectedFileNames { get; set; } = new();
+
+    private async Task ScrapeAndAnalyzePdfs()
+    {
+        if (string.IsNullOrWhiteSpace(WebsiteUrl))
+        {
+            StatusMessage = "Please enter a valid website URL.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(OutputDirectoryName))
+        {
+            StatusMessage = "Please enter an output directory name.";
+            return;
+        }
+
+        IsProcessing = true;
+        StatusMessage = "Starting PDF scraping and analysis...";
+
+        try
+        {
+            var safeDir = Path.GetFileName(OutputDirectoryName); // Prevent path traversal
+            var outputDirectory = Path.Combine("DownloadedPdfs", safeDir, Guid.NewGuid().ToString());
+
+            var pdfLinks = await PdfScraperService.GetPdfLinksAsync(WebsiteUrl);
+            await PdfScraperService.DownloadPdfsAsync(pdfLinks, outputDirectory);
+
+            foreach (var pdfPath in Directory.GetFiles(outputDirectory, "*.pdf"))
+            {
+                await AnalysisService.AnalyzePdfAsync(pdfPath);
+            }
+
+            StatusMessage = $"Successfully processed {pdfLinks.Count()} PDF(s) into '{outputDirectory}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task HandleDirectoryUpload(InputFileChangeEventArgs e)
+    {
+        SelectedFileNames.Clear();
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            SelectedFileNames.Add(file.Name);
+            // Optional: process files here or send to backend
+            // using var stream = file.OpenReadStream();
+            // await ProcessFileAsync(stream, file.Name);
+        }
+    }
+}

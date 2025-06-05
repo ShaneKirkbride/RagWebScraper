@@ -7,25 +7,26 @@ using static RagWebScraper.Pages.UploadPdf;
 [Route("api/pdf")]
 public class PdfUploadController : ControllerBase
 {
-    private readonly PdfTextExtractorService _extractor;
-    private readonly SentimentAnalyzerService _sentiment;
+    private readonly ITextExtractor _extractor;
+    private readonly ISentimentAnalyzer _sentiment;
     private readonly TextChunker _chunker;
     private readonly IEmbeddingService _embedding;
     private readonly VectorStoreService _store;
-    private readonly KeywordExtractorService _keywordExtractor;
-    private readonly KeywordContextSentimentService _keywordContextSentimentService;
-
+    private readonly IKeywordExtractor _keywordExtractor;
+    private readonly IKeywordContextSentimentService _keywordContextSentimentService;
     private readonly IChunkIngestorService _chunkIngestor;
+    private readonly IPdfProcessingQueue _queue;
 
     public PdfUploadController(
-        PdfTextExtractorService extractor,
-        SentimentAnalyzerService sentiment,
+        ITextExtractor extractor,
+        ISentimentAnalyzer sentiment,
         TextChunker chunker,
         IEmbeddingService embedding,
         VectorStoreService store,
-        KeywordExtractorService keywordExtractor,
-        KeywordContextSentimentService keywordContextSentimentService,
-        IChunkIngestorService chunkIngestor)
+        IKeywordExtractor keywordExtractor,
+        IKeywordContextSentimentService keywordContextSentimentService,
+        IChunkIngestorService chunkIngestor,
+        IPdfProcessingQueue queue)
     {
         _extractor = extractor;
         _sentiment = sentiment;
@@ -35,8 +36,8 @@ public class PdfUploadController : ControllerBase
         _keywordExtractor = keywordExtractor;
         _keywordContextSentimentService = keywordContextSentimentService;
         _chunkIngestor = chunkIngestor;
+        _queue = queue;
     }
-
 
     [HttpPost("analyze")]
     public async Task<IActionResult> AnalyzePdf([FromForm] IFormFileCollection files, [FromForm] string keywords)
@@ -45,37 +46,25 @@ public class PdfUploadController : ControllerBase
             return BadRequest("No files uploaded.");
 
         var keywordList = keywords?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)?.ToList()
-                          ?? new List<string>();
-
-        var results = new List<object>();
+                           ?? new List<string>();
 
         foreach (var file in files)
         {
             if (!file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            using var stream = file.OpenReadStream();
-            var extractedText = _extractor.ExtractText(stream);
-            var sentiment = _sentiment.AnalyzeSentiment(extractedText);
-            var frequencies = _keywordExtractor.ExtractKeywords(extractedText, keywordList);
-            var keywordSentiments = _keywordContextSentimentService.ExtractKeywordSentiments(extractedText, keywordList);
+            var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
 
-            await _chunkIngestor.IngestChunksAsync(file.FileName, extractedText, new Dictionary<string, object>
-            {
-                { "Sentiment", sentiment },
-                { "SourceType", "PDF" }
-            });
-
-            results.Add(item: new FileSentimentSummary
+            _queue.Enqueue(new PdfProcessingRequest
             {
                 FileName = file.FileName,
-                Sentiment = sentiment,
-                KeywordFrequencies = frequencies,
-                KeywordSentiments = keywordSentiments,
-                RawText = extractedText
+                FileStream = memoryStream,
+                Keywords = keywordList
             });
         }
 
-        return Ok(results);
+        return Ok(new { Message = "PDFs are being processed in the background." });
     }
 }

@@ -3,19 +3,17 @@ using UglyToad.PdfPig;
 
 namespace RagWebScraper.Services
 {
-    public class PdfTextExtractorService
+    public class PdfTextExtractorService : ITextExtractor
     {
         public string ExtractText(Stream pdfStream)
         {
             using var document = PdfDocument.Open(pdfStream);
-            var textBuilder = new StringBuilder();
-
+            var builder = new StringBuilder();
             foreach (var page in document.GetPages())
             {
-                textBuilder.AppendLine(page.Text);
+                builder.AppendLine(page.Text);
             }
-
-            return textBuilder.ToString();
+            return builder.ToString();
         }
     }
 }

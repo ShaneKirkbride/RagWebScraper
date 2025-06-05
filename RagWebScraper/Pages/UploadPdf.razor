@@ -7,6 +7,7 @@
 @inject IRagAnalyzerService RagAnalyzer
 
 @implements IDisposable
+@using System.Timers
 @using RagWebScraper.Models
 @using RagWebScraper.Services
 @using RagWebScraper.Shared
@@ -89,77 +90,57 @@
             </div>
         </div>
     }
-
-
 }
 
 @code {
     private string? uploadStatus;
     private string searchTerms;
 
+    private Timer? _pollingTimer;
+    private List<string> uploadedFileNames = new();
+
     private async Task HandlePdfUpload(InputFileChangeEventArgs e)
     {
-        if (e.FileCount == 0)
+        if (string.IsNullOrWhiteSpace(searchTerms))
         {
-            uploadStatus = "No files selected.";
+            uploadStatus = "Please provide keywords and upload at least one PDF.";
             return;
         }
 
-        using var content = new MultipartFormDataContent();
-        content.Add(new StringContent(searchTerms ?? ""), "keywords");
+        var form = new MultipartFormDataContent();
 
         foreach (var file in e.GetMultipleFiles())
         {
-            var streamContent = new StreamContent(file.OpenReadStream(20_000_000));
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
-            content.Add(streamContent, "files", file.Name);
+            var stream = file.OpenReadStream(1_073_741_824); // 1GB limit
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            uploadedFileNames.Add(file.Name);
+            form.Add(content: fileContent, name: "files", fileName: file.Name);
         }
 
-        var apiUrl = Navigation.BaseUri + "api/pdf/analyze";
-        var response = await Http.PostAsync(apiUrl, content);
+        form.Add(new StringContent(searchTerms), "keywords");
 
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var result = await response.Content.ReadFromJsonAsync<List<FileSentimentSummary>>();
-            var parsed = result ?? [];
+            string apiUrl = Navigation.BaseUri + "api/pdf/analyze";
+            var response = await Http.PostAsync(apiUrl, form);
 
-            AppState.SetPdfResults(parsed);
-
-            var converted = parsed.Select(s =>
+            if (response.IsSuccessStatusCode)
             {
-            var result = new AnalysisResult(Enumerable.Empty<LinkedPassage>())
-                {
-                    Url = s.FileName,
-                    PageSentimentScore = s.Sentiment,
-                    KeywordFrequencies = s.KeywordFrequencies ?? new(),
-                    KeywordSentimentScores = s.KeywordSentiments ?? new()
-                };
-            return result;
-            }).ToList();
+                uploadStatus = "PDFs uploaded and queued for background processing.";
+                // Optionally: start polling or show spinner here
+                uploadedFileNames.Clear();
+                form = new MultipartFormDataContent();
+            }
+            else
+            {
+                uploadStatus = $"Upload failed: {response.ReasonPhrase}";
+            }
 
-            var summary = await SummaryService.GenerateSummaryAsync(converted);
-            AppState.SetPdfKeywordSummary(summary);
-
-            // 🔥 NEW: Extract raw text and run semantic linking
-            var docChunks = parsed
-                .Where(p => !string.IsNullOrWhiteSpace(p.RawText))
-                .Select(p => new DocumentChunk(p.FileName, p.RawText!))
-                .ToList();
-
-            var docSet = new DocumentSet(docChunks
-                .GroupBy(c => c.SourceId)
-                .Select(g => new AnalyzedDocument(g.Key, g.ToList()))
-                .ToList());
-
-            var analysis = await RagAnalyzer.AnalyzeAsync(docSet);
-            AppState.SetPdfCrossDocLinks(analysis.Links.ToList());
-            AppState.SetEntityGraphs(analysis.EntityGraphs);
-
-            uploadStatus = "PDFs analyzed and ingested into RAG successfully.";
         }
-        else
+        catch (Exception ex)
         {
-            uploadStatus = $"Upload failed: {response.ReasonPhrase}";
+            uploadStatus = $"Error: {ex.Message}";
         }
     }
 
@@ -172,13 +153,60 @@
                 KeywordSentimentScores = s.KeywordSentiments ?? new()
             }).ToList();
 
+
     protected override void OnInitialized()
     {
         AppState.OnChange += StateHasChanged;
+
+        _pollingTimer = new Timer(10000); // every 10 seconds
+        _pollingTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(PollForResults);
+        };
+        _pollingTimer.AutoReset = true;
+        _pollingTimer.Enabled = true; // ✅ Starts the timer
     }
 
     public void Dispose()
     {
         AppState.OnChange -= StateHasChanged;
+        _pollingTimer?.Stop();
+        _pollingTimer?.Dispose();
+    }
+
+    private async Task PollForResults()
+    {
+        try
+        {
+            var results = await Http.GetFromJsonAsync<List<FileSentimentSummary>>(Navigation.BaseUri + "api/pdf/results");
+
+            if (results is { Count: > 0 })
+            {
+                var resultNames = results.Select(r => r.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var allReceived = uploadedFileNames.All(name => resultNames.Contains(name));
+
+                if (allReceived)
+                {
+                    // ✅ Prevent repeated updates if results are unchanged
+                    if (!AppState.PdfAnalysisResults.SequenceEqual(results, new FileSentimentSummaryComparer()))
+                    {
+                        AppState.SetPdfResults(results);
+                        uploadStatus = "All PDF analyses complete.";
+                    }
+
+                    _pollingTimer?.Stop();
+                    _pollingTimer?.Dispose();
+                    _pollingTimer = null;
+                    uploadedFileNames.Clear();
+
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch
+        {
+            uploadStatus = "Error retrieving results.";
+            await InvokeAsync(StateHasChanged);
+        }
     }
 }
