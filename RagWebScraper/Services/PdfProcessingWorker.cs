@@ -1,4 +1,7 @@
-﻿namespace RagWebScraper.Services
+﻿using RagWebScraper.Models;
+using RagWebScraper.Services;
+
+namespace RagWebScraper.Services
 {
     public class PdfProcessingWorker : BackgroundService
     {
@@ -43,17 +46,17 @@
                     var keywordSentiment = _contextSentiment.ExtractKeywordSentiments(text, request.Keywords);
 
                     await _chunkIngestor.IngestChunksAsync(request.FileName, text, new Dictionary<string, object>
-                {
-                    { "Sentiment", sentiment },
-                    { "SourceType", "PDF" }
-                });
+                    {
+                        { "Sentiment", sentiment },
+                        { "SourceType", "PDF" }
+                    });
 
-                    _resultStore.Add(new FileSentimentSummary
+                    _resultStore.Add(new AnalysisResult(links: new List<LinkedPassage>())
                     {
                         FileName = request.FileName,
-                        Sentiment = sentiment,
+                        PageSentimentScore = sentiment,
                         KeywordFrequencies = keywords,
-                        KeywordSentiments = keywordSentiment,
+                        KeywordSentimentScores = keywordSentiment,
                         RawText = text
                     });
 

@@ -1,7 +1,13 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using RagWebScraper.Models;
 using RagWebScraper.Services;
 using static RagWebScraper.Pages.UploadPdf;
+
+public interface IPdfAnalyzerService
+{
+    Task<AnalysisResult> AnalyzePdfAsync(string fileName, Stream stream, List<string> keywords);
+}
 
 [ApiController]
 [Route("api/pdf")]

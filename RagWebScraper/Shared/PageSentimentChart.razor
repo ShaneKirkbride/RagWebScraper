@@ -46,10 +46,28 @@ else
         foreach (var result in Results)
         {
             pageDataset.Data.Add(result.PageSentimentScore);
-            pageLabels.Add(result.Url);
+
+            // Prefer Url, fallback to FileName, fallback to "Unknown"
+            var label = !string.IsNullOrWhiteSpace(result.Url)
+                ? result.Url
+                : !string.IsNullOrWhiteSpace(result.FileName)
+                    ? result.FileName
+                    : "Unknown";
+
+            pageLabels.Add(Truncate(label));
         }
 
         chartNeedsUpdate = true;
+    }
+
+    private string Truncate(string value, int maxLength = 50)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Unknown";
+
+        return value.Length <= maxLength
+            ? value
+            : value.Substring(0, maxLength) + "...";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

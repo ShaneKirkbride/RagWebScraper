@@ -2,9 +2,8 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AppStateService AppState
-@inject KeywordSentimentSummaryService SummaryService
-@inject IServiceProvider ServiceProvider
 @inject IRagAnalyzerService RagAnalyzer
+@inject KeywordSentimentSummaryService SummaryService
 
 @implements IDisposable
 @using System.Timers
@@ -35,6 +34,13 @@
 {
     <h3 class="text-success">PDF Analysis Results</h3>
     <div class="col-md-6">
+        @if (AppState.PdfCrossDocLinks?.Any() == true)
+        {
+            <h3 class="text-primary">Cross-Document Semantic Links</h3>
+            <CrossDocLinks Links="AppState.PdfCrossDocLinks" />
+        }
+    </div>
+    <div class="col-md-6">
         @if (!string.IsNullOrWhiteSpace(AppState.PdfKeywordSummary))
         {
             <div class="alert alert-info">
@@ -43,37 +49,38 @@
             </div>
         }
     </div>
-
-    @if (AppState.PdfCrossDocLinks?.Any() == true)
-    {
-        <h3 class="text-primary">Cross-Document Semantic Links</h3>
-        <CrossDocLinks Links="AppState.PdfCrossDocLinks" />
-    }
-
     <div class="row mb-4">
         <div class="col-md-6">
-            <PageSentimentChart Results="GetAnalysisResults()" />
+            <PageSentimentChart Results="AppState.PdfAnalysisResults" />
         </div>
         <div class="col-md-6">
-            <KeywordSentimentChart Results="GetAnalysisResults()" />
+            <KeywordSentimentChart Results="AppState.PdfAnalysisResults" />
         </div>
     </div>
 
-    @foreach (var summary in AppState.PdfAnalysisResults)
+    @foreach (var result in AppState.PdfAnalysisResults)
     {
         <div class="card mb-3">
             <div class="card-body">
-                <h5>@summary.FileName</h5>
+                <h5>@result.FileName</h5>
                 <p>
                     Page Sentiment Score:
-                    <span class="badge bg-primary">@summary.Sentiment</span>
+                    <span class="badge bg-primary">@result.PageSentimentScore</span>
                 </p>
 
-                @if (summary.KeywordSentiments?.Any() == true)
+                @if (!string.IsNullOrWhiteSpace(result.KeywordSummary))
+                {
+                    <div class="alert alert-info">
+                        <strong>AI Summary:</strong><br />
+                        @AppState.PdfKeywordSummary
+                    </div>
+                }
+
+                @if (result.KeywordSentimentScores?.Any() == true)
                 {
                     <h6>Keyword Sentiments:</h6>
                     <ul>
-                        @foreach (var kv in summary.KeywordSentiments)
+                        @foreach (var kv in result.KeywordSentimentScores)
                         {
                             <li>
                                 <strong>@kv.Key</strong> :
@@ -83,9 +90,9 @@
                     </ul>
                 }
 
-                @if (summary.KeywordFrequencies?.Count > 0)
+                @if (result.KeywordFrequencies?.Count > 0)
                 {
-                    <KeywordChart Frequencies="@summary.KeywordFrequencies" />
+                    <KeywordChart Frequencies="@result.KeywordFrequencies" />
                 }
             </div>
         </div>
@@ -94,7 +101,7 @@
 
 @code {
     private string? uploadStatus;
-    private string searchTerms;
+    private string searchTerms = string.Empty;
 
     private Timer? _pollingTimer;
     private List<string> uploadedFileNames = new();
@@ -128,15 +135,12 @@
             if (response.IsSuccessStatusCode)
             {
                 uploadStatus = "PDFs uploaded and queued for background processing.";
-                // Optionally: start polling or show spinner here
-                uploadedFileNames.Clear();
-                form = new MultipartFormDataContent();
+                StartPolling();
             }
             else
             {
                 uploadStatus = $"Upload failed: {response.ReasonPhrase}";
             }
-
         }
         catch (Exception ex)
         {
@@ -144,41 +148,26 @@
         }
     }
 
-    private List<AnalysisResult> GetAnalysisResults() =>
-        AppState.PdfAnalysisResults.Select(s => new AnalysisResult(Enumerable.Empty<LinkedPassage>())
-            {
-                Url = s.FileName,
-                PageSentimentScore = s.Sentiment,
-                KeywordFrequencies = s.KeywordFrequencies ?? new(),
-                KeywordSentimentScores = s.KeywordSentiments ?? new()
-            }).ToList();
-
-
-    protected override void OnInitialized()
+    private void StartPolling()
     {
-        AppState.OnChange += StateHasChanged;
-
         _pollingTimer = new Timer(10000); // every 10 seconds
-        _pollingTimer.Elapsed += async (_, _) =>
+        _pollingTimer.Elapsed += async (sender, args) =>
         {
             await InvokeAsync(PollForResults);
         };
         _pollingTimer.AutoReset = true;
-        _pollingTimer.Enabled = true; // ✅ Starts the timer
-    }
-
-    public void Dispose()
-    {
-        AppState.OnChange -= StateHasChanged;
-        _pollingTimer?.Stop();
-        _pollingTimer?.Dispose();
+        _pollingTimer.Enabled = true;
     }
 
     private async Task PollForResults()
     {
         try
         {
-            var results = await Http.GetFromJsonAsync<List<FileSentimentSummary>>(Navigation.BaseUri + "api/pdf/results");
+            var results = await Http.GetFromJsonAsync<List<AnalysisResult>>(Navigation.BaseUri + "api/pdf/results");
+
+            // Generate and store summary
+            var summary = await SummaryService.GenerateSummaryAsync(results);
+            AppState.SetPdfKeywordSummary(summary);
 
             if (results is { Count: > 0 })
             {
@@ -187,8 +176,7 @@
 
                 if (allReceived)
                 {
-                    // ✅ Prevent repeated updates if results are unchanged
-                    if (!AppState.PdfAnalysisResults.SequenceEqual(results, new FileSentimentSummaryComparer()))
+                    if (!AppState.PdfAnalysisResults.SequenceEqual(results, new AnalysisResultComparer()))
                     {
                         AppState.SetPdfResults(results);
                         uploadStatus = "All PDF analyses complete.";
@@ -203,10 +191,22 @@
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            uploadStatus = "Error retrieving results.";
+            uploadStatus = $"Error retrieving results: {ex.Message}";
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+        _pollingTimer?.Stop();
+        _pollingTimer?.Dispose();
     }
 }

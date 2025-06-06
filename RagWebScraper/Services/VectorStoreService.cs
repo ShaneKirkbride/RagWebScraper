@@ -34,11 +34,11 @@ namespace RagWebScraper.Services
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"❌ Qdrant insert failed: {response.StatusCode} - {error}");
+                Console.WriteLine($"Qdrant insert failed: {response.StatusCode} - {error}");
             }
             else
             {
-                Console.WriteLine($"✅ Vector inserted: {vectorData.Id}");
+                Console.WriteLine($"Vector inserted: {vectorData.Id}");
             }
         }
 
