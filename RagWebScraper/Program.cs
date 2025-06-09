@@ -68,7 +68,7 @@ builder.Services.AddSingleton<IPageAnalyzerService, PageAnalyzerService>();
 builder.Services.AddScoped<IAnalysisService, PdfAnalysisService>();
 builder.Services.AddScoped<IRagAnalyzerService, RagAnalyzerService>();
 builder.Services.AddScoped<IKnowledgeGraphService, KnowledgeGraphService>();
-builder.Services.AddScoped<IEntityGraphExtractor, SpacyEntityGraphExtractor>();
+builder.Services.AddScoped<IEntityGraphExtractor, SpaceEntityGraphExtractor>();
 builder.Services.AddScoped<ICrossDocumentLinker, SemanticCrossLinker>();
 
 // ---------------------------------------------

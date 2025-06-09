@@ -3,11 +3,11 @@ using RagWebScraper.Models;
 
 namespace RagWebScraper.Services
 {
-    public sealed class SpacyEntityGraphExtractor : IEntityGraphExtractor
+    public sealed class SpaceEntityGraphExtractor : IEntityGraphExtractor
     {
         private readonly INerService _nerService;
 
-        public SpacyEntityGraphExtractor(INerService nerService)
+        public SpaceEntityGraphExtractor(INerService nerService)
         {
             _nerService = nerService;
         }
