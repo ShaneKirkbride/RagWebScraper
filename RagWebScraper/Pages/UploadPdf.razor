@@ -131,7 +131,7 @@
         {
             string apiUrl = Navigation.BaseUri + "api/pdf/analyze";
             var response = await Http.PostAsync(apiUrl, form);
-
+            Console.WriteLine($"Called: {apiUrl}");
             if (response.IsSuccessStatusCode)
             {
                 uploadStatus = "PDFs uploaded and queued for background processing.";

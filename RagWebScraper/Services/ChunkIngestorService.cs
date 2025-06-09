@@ -47,11 +47,11 @@ public class ChunkIngestorService : IChunkIngestorService
                     Metadata = metadata
                 });
 
-                Console.WriteLine($"✅ Inserted chunk from: {sourceLabel}");
+                Console.WriteLine($"Inserted chunk from: {sourceLabel}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Failed to insert chunk from {sourceLabel}: {ex.Message}");
+                Console.WriteLine($"Failed to insert chunk from {sourceLabel}: {ex.Message}");
             }
         }
     }

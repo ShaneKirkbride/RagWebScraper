@@ -1,71 +1,87 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Components.Server;
+using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Options;
 using OpenAI;
+using RagWebScraper.Models;
+using RagWebScraper.Services;
+using RagWebScraper.Shared;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Charts;
-using RagWebScraper.Services;
-using Microsoft.AspNetCore.Components.Server.Circuits;
-using Microsoft.AspNetCore.Components.Server;
-using RagWebScraper.Shared;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using RagWebScraper.Models;
-using System.Text.Json;
-using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseStaticWebAssets();
 
+// ---------------------------------------------
+// Static & Request Limits
+// ---------------------------------------------
+builder.WebHost.UseStaticWebAssets();
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 1_073_741_824; // 1 GB
 });
-
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 1_073_741_824; // 1 GB
 });
-// Load config and OpenAI key
+
+// ---------------------------------------------
+// Blazorise
+// ---------------------------------------------
+builder.Services
+    .AddBlazorise(options => { options.Immediate = true; })
+    .AddBootstrap5Providers();
+builder.Services.AddBootstrap5Components();
+
+// ---------------------------------------------
+// OpenAI Setup
+// ---------------------------------------------
 var openAiKey = builder.Configuration["OpenAI:ApiKey"];
 if (string.IsNullOrWhiteSpace(openAiKey))
     throw new InvalidOperationException("OpenAI API key not configured.");
+builder.Services.AddSingleton(new OpenAIClient(openAiKey));
 
-var openAiClient = new OpenAIClient(openAiKey);
-builder.Services.AddSingleton(openAiClient);
+// ---------------------------------------------
+// Add Services & Dependency Injection
+// ---------------------------------------------
 
-// Blazorise setup
-builder.Services
-    .AddBlazorise(options =>
-    {
-        options.Immediate = true; // ensures UI updates immediately on changes
-    })
-    .AddBootstrap5Providers();
+// Infrastructure
+builder.Services.AddSingleton<AppStateService>();
+builder.Services.AddSingleton<PdfResultStore>();
+builder.Services.AddSingleton<ITextExtractor, PdfTextExtractorService>();
+builder.Services.AddSingleton<TextChunker>();
+builder.Services.AddSingleton<IEmbeddingService>(new EmbeddingService(openAiKey));
+builder.Services.AddSingleton<IChunkIngestorService, ChunkIngestorService>();
+builder.Services.AddSingleton<IPdfProcessingQueue, PdfProcessingQueue>();
+builder.Services.AddHostedService<PdfProcessingWorker>();
 
-builder.Services.AddBootstrap5Components();
+// Analysis / AI
+builder.Services.AddSingleton<ISentimentAnalyzer, SentimentAnalyzerService>();
+builder.Services.AddSingleton<IKeywordExtractor, KeywordExtractorService>();
+builder.Services.AddSingleton<IKeywordContextSentimentService, KeywordContextSentimentService>();
+builder.Services.AddSingleton<KeywordSentimentSummaryService>();
+builder.Services.AddSingleton<IPageAnalyzerService, PageAnalyzerService>();
 
-// HttpClients for services that need them
+// Scoped / Page-bound
+builder.Services.AddScoped<IAnalysisService, PdfAnalysisService>();
+builder.Services.AddScoped<IRagAnalyzerService, RagAnalyzerService>();
+builder.Services.AddScoped<IKnowledgeGraphService, KnowledgeGraphService>();
+builder.Services.AddScoped<IEntityGraphExtractor, SpacyEntityGraphExtractor>();
+builder.Services.AddScoped<ICrossDocumentLinker, SemanticCrossLinker>();
+
+// ---------------------------------------------
+// HttpClients
+// ---------------------------------------------
 builder.Services.AddHttpClient<IWebScraperService, WebScraperService>();
 builder.Services.AddHttpClient<VectorStoreService>();
 builder.Services.AddHttpClient<QdrantSetupService>();
 builder.Services.AddHttpClient<IPdfScraperService, PdfScraperService>();
 
-// Register backend services
-builder.Services.AddSingleton<PdfResultStore>();
-builder.Services.AddSingleton<KeywordSentimentSummaryService>();
-builder.Services.AddSingleton<IKeywordContextSentimentService, KeywordContextSentimentService>();
-builder.Services.AddSingleton<ISentimentAnalyzer, SentimentAnalyzerService>();
-builder.Services.AddSingleton<IKeywordExtractor, KeywordExtractorService>();
-builder.Services.AddSingleton<TextChunker>();
-builder.Services.AddSingleton<IEmbeddingService>(
-    new EmbeddingService(openAiKey));
-builder.Services.AddSingleton<ITextExtractor, PdfTextExtractorService>();
-builder.Services.AddScoped<IAnalysisService, PdfAnalysisService>();
-builder.Services.AddSingleton<IPdfProcessingQueue, PdfProcessingQueue>();
-builder.Services.AddHostedService<PdfProcessingWorker>();
-// Bind settings
-builder.Services.Configure<NerSettings>(
-    builder.Configuration.GetSection("NerSettings"));
-
-// Manually create ONNXNerService with DI-resolved config
+// ---------------------------------------------
+// NER (ONNX Model)
+builder.Services.Configure<NerSettings>(builder.Configuration.GetSection("NerSettings"));
 builder.Services.AddSingleton<INerService>(provider =>
 {
     var config = provider.GetRequiredService<IConfiguration>();
@@ -78,33 +94,32 @@ builder.Services.AddSingleton<INerService>(provider =>
     return new ONNXNerService(modelPath, vocabPath, mergesPath, dictPath);
 });
 
-builder.Services.AddScoped<IEntityGraphExtractor, SpacyEntityGraphExtractor>();
-builder.Services.AddScoped<ICrossDocumentLinker, SemanticCrossLinker>();
-builder.Services.AddScoped<IRagAnalyzerService, RagAnalyzerService>();
-
-// Controllers and Blazor setup
+// ---------------------------------------------
+// Blazor & Controllers
+// ---------------------------------------------
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.Configure<CircuitOptions>(options => { options.DetailedErrors = true; });
 
-builder.Services.Configure<CircuitOptions>(options =>
-{
-    options.DetailedErrors = true;
-});
-builder.Services.AddSingleton<IPageAnalyzerService, PageAnalyzerService>();
-builder.Services.AddSingleton<IChunkIngestorService, ChunkIngestorService>();
-builder.Services.AddSingleton<AppStateService>();
+// ---------------------------------------------
+// Build & Configure App
+// ---------------------------------------------
 var app = builder.Build();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.MapControllers();
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
+
+// ---------------------------------------------
+// Startup Tasks
+// ---------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     var qdrant = scope.ServiceProvider.GetRequiredService<QdrantSetupService>();
     await qdrant.EnsureCollectionExistsAsync();
 }
-
-app.MapControllers();
-app.MapBlazorHub();
-app.MapFallbackToPage("/_Host");
 
 app.Run();

@@ -15,5 +15,5 @@ public class AnalysisResult
     public IEnumerable<LinkedPassage> Links { get; set; }
     public string KeywordSummary { get; set; }
     public string RawText { get; internal set; }
+    public List<string>? RawSentences { get; set; }
 }
-

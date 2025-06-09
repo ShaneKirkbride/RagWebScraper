@@ -8,7 +8,6 @@ public interface IPageAnalyzerService
     Task<AnalysisResult> AnalyzePageAsync(string url, List<string> keywords);
 }
 
-
 // Service implementation for page analysis
 public class PageAnalyzerService : IPageAnalyzerService
 {
@@ -43,7 +42,6 @@ public class PageAnalyzerService : IPageAnalyzerService
         };
     }
 }
-
 
 // Controller using SRP and DIP
 [ApiController]

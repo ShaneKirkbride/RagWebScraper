@@ -9,4 +9,5 @@ public interface INerService
     /// <param name="text">The raw input text.</param>
     /// <returns>A list of extracted named entities with type and position info.</returns>
     List<NamedEntity> RecognizeEntities(string text);
+    List<(string Token, string Label)> RecognizeTokensWithLabels(string sentence);
 }

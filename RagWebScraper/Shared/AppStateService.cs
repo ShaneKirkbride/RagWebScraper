@@ -2,6 +2,7 @@
 using RagWebScraper.Models;
 using RagWebScraper.Services;
 using static RagWebScraper.Pages.UploadPdf;
+using static RagWebScraper.Pages.KnowledgeGraph;
 
 public class AppStateService
 {

@@ -9,17 +9,17 @@ namespace RagWebScraper.Services
 
     public interface IRelationDetectorService
     {
-        IEnumerable<EntityRelation> DetectRelations(DocumentChunk chunk, IEnumerable<NamedEntity> entities);
+        IEnumerable<EntityGraphResult> DetectRelations(DocumentChunk chunk, IEnumerable<NamedEntity> entities);
     }
 
     public interface IKnowledgeGraphBuilderService
     {
-        KnowledgeGraph Build(IEnumerable<LinkedEntity> entities, IEnumerable<EntityRelation> relations);
+        KnowledgeGraphService Build(IEnumerable<LinkedEntity> entities, IEnumerable<EntityGraphResult> relations);
     }
 
     public interface IGraphExportService
     {
-        string ExportToJson(KnowledgeGraph graph);
-        string ExportToDot(KnowledgeGraph graph);
+        string ExportToJson(KnowledgeGraphService graph);
+        string ExportToDot(KnowledgeGraphService graph);
     }
 }
