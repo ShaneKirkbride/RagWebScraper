@@ -29,7 +29,8 @@ namespace RagWebScraper.Services
             };
 
             var response = await _httpClient.PutAsJsonAsync(
-                $"http://localhost:6333/collections/rag/points", payload);
+                $"{_qdrantBaseUrl}/collections/{_collectionName}/points",
+                payload);
 
             if (!response.IsSuccessStatusCode)
             {
