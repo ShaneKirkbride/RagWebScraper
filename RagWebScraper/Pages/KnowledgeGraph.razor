@@ -11,6 +11,7 @@
 @using RagWebScraper.Services
 @using RagWebScraper.Shared
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components
 
 <h3 class="mb-3 text-primary">Knowledge Graph from PDFs</h3>
 
@@ -40,7 +41,9 @@
                 <ol>
                     @foreach (var sentence in graph.Result.LabeledSentences)
                     {
-                        <li><pre class="m-0">@sentence</pre></li>
+                        <li>
+                            <pre class="xml-display m-0">@((MarkupString)FormatXml(sentence))</pre>
+                        </li>
                     }
                 </ol>
 
@@ -162,5 +165,14 @@
         AppState.OnChange -= StateHasChanged;
         _pollingTimer?.Stop();
         _pollingTimer?.Dispose();
+    }
+
+    private static string FormatXml(string xml)
+    {
+        var encoded = System.Net.WebUtility.HtmlEncode(xml ?? string.Empty);
+        return System.Text.RegularExpressions.Regex.Replace(
+            encoded,
+            @"&lt;/?[A-Za-z0-9-]+&gt;",
+            m => $"<span class=\"xml-tag\">{m.Value}</span>");
     }
 }
