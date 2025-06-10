@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
+using RagWebScraper.Factories;
 
 namespace RagWebScraper.Controllers;
 [ApiController]
 [Route("api/KnowledgeGraph")]
-public class KnowledgeGraphController : ControllerBase
+public class KnowledgeGraphController : ControllerBase, IAnalyzerController
 {
     private readonly IKnowledgeGraphService _graphService;
 
@@ -15,7 +16,10 @@ public class KnowledgeGraphController : ControllerBase
     }
 
     [HttpPost("analyze")]
-    public async Task<ActionResult<EntityGraphResult>> AnalyzeText([FromBody] string text)
+    public Task<IActionResult> AnalyzeText([FromBody] string text) =>
+        AnalyzeTextInternal(text);
+
+    private async Task<IActionResult> AnalyzeTextInternal(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return BadRequest("Text is empty");
         var graph = await _graphService.AnalyzeTextAsync(text);
@@ -30,5 +34,13 @@ public class KnowledgeGraphController : ControllerBase
 
         var graph = await _graphService.AnalyzePdfAsync(fileName);
         return Ok(graph);
+    }
+
+    async Task<IActionResult> IAnalyzerController.AnalyzeAsync(object request)
+    {
+        if (request is not string text)
+            return new BadRequestObjectResult("Invalid request type.");
+
+        return await AnalyzeTextInternal(text);
     }
 }
