@@ -36,6 +36,14 @@
                     }
                 </ul>
 
+                <h5>Tagged Sentences</h5>
+                <ol>
+                    @foreach (var sentence in graph.Result.LabeledSentences)
+                    {
+                        <li><pre class="m-0">@sentence</pre></li>
+                    }
+                </ol>
+
                 <h5>Relationships</h5>
                 <ul>
                     @foreach (var edge in graph.Result.Edges)
