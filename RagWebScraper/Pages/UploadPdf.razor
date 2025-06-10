@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @inject AppStateService AppState
 @inject IRagAnalyzerService RagAnalyzer
+@inject TextChunker Chunker
 @inject KeywordSentimentSummaryService SummaryService
 
 @implements IDisposable
@@ -180,6 +181,16 @@
                     {
                         AppState.SetPdfResults(results);
                         uploadStatus = "All PDF analyses complete.";
+                    }
+
+                    if (results.Count > 1)
+                    {
+                        var docs = results.Select(r => new AnalyzedDocument(
+                            r.FileName,
+                            Chunker.ChunkText(r.RawText).Select(t => new DocumentChunk(r.FileName, t)).ToList())).ToList();
+                        var set = new DocumentSet(docs);
+                        var analysis = await RagAnalyzer.AnalyzeAsync(set);
+                        AppState.SetPdfCrossDocLinks(analysis.Links.ToList());
                     }
 
                     _pollingTimer?.Stop();
