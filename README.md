@@ -49,6 +49,12 @@ dotnet run
 
 Visit `https://localhost:7118`.
 
+### Run Tests
+
+```bash
+dotnet test
+```
+
 ---
 
 ## Architecture
