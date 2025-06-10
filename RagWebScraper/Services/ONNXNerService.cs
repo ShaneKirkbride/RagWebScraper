@@ -8,8 +8,8 @@ namespace RagWebScraper.Services;
 
 public class ONNXNerService : INerService
 {
-    private readonly EnglishRobertaTokenizer _tokenizer;
-    private readonly InferenceSession _session;
+    private readonly ITokenizer _tokenizer;
+    private readonly IOnnxSession _session;
     private readonly string[] _labels =
     {
         "O", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC", "B-MISC", "I-MISC"
@@ -17,14 +17,20 @@ public class ONNXNerService : INerService
 
     public ONNXNerService(string modelPath, string vocabPath, string mergesPath, string dictionaryPath)
     {
-        _tokenizer = EnglishRobertaTokenizer.Create(vocabPath, mergesPath, dictionaryPath);
-        _session = new InferenceSession(modelPath);
+        var tokenizer = EnglishRobertaTokenizer.Create(vocabPath, mergesPath, dictionaryPath);
+        _tokenizer = new EnglishRobertaTokenizerAdapter(tokenizer);
+        _session = new OnnxSessionWrapper(modelPath);
+    }
+
+    public ONNXNerService(ITokenizer tokenizer, IOnnxSession session)
+    {
+        _tokenizer = tokenizer;
+        _session = session;
     }
     
     public List<(string Token, string Label)> RecognizeTokensWithLabels(string text)
     {
-        var encodingIds = _tokenizer.EncodeToIds(text);
-        var encodingTokens = _tokenizer.EncodeToTokens(text, out _);
+        var (encodingIds, encodingTokens) = _tokenizer.Encode(text);
 
         long[] inputIds = encodingIds.Select(id => (long)id).ToArray();
         long[] attentionMask = Enumerable.Repeat(1L, inputIds.Length).ToArray();
@@ -52,7 +58,7 @@ public class ONNXNerService : INerService
             var tokenLogits = logits.Skip(offset).Take(labelCount).ToArray();
             int predictedIdx = Array.IndexOf(tokenLogits, tokenLogits.Max());
 
-            var token = Detokenize(encodingTokens[i].Value);
+            var token = Detokenize(encodingTokens[i]);
             var label = _labels[predictedIdx];
 
             tokenLabels.Add((token, label));
@@ -63,8 +69,7 @@ public class ONNXNerService : INerService
 
     public List<NamedEntity> RecognizeEntities(string text)
     {
-        var encodingIds = _tokenizer.EncodeToIds(text);
-        var encodingTokens = _tokenizer.EncodeToTokens(text, out _);
+        var (encodingIds, encodingTokens) = _tokenizer.Encode(text);
 
         long[] inputIds = encodingIds.Select(id => (long)id).ToArray();
         long[] attentionMask = Enumerable.Repeat(1L, inputIds.Length).ToArray();
@@ -100,7 +105,7 @@ public class ONNXNerService : INerService
 
         for (int i = 0; i < encodingTokens.Count; i++)
         {
-            var token = Detokenize(encodingTokens[i].Value);
+            var token = Detokenize(encodingTokens[i]);
             var label = _labels[labelIds[i]];
 
             if (label.StartsWith("B-"))
