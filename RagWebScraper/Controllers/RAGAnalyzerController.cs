@@ -48,18 +48,11 @@ public class PageAnalyzerService : IPageAnalyzerService
 [Route("api/rag")]
 public class RAGAnalyzerController : ControllerBase
 {
-    private readonly IPageAnalyzerService _pageAnalyzer;
-    private readonly IChunkIngestorService _chunkIngestor;
-    private readonly IWebScraperService _scraper;
+    private readonly IRagAnalysisQueue _queue;
 
-    public RAGAnalyzerController(
-        IPageAnalyzerService pageAnalyzer,
-        IChunkIngestorService chunkIngestor,
-        IWebScraperService scraper)
+    public RAGAnalyzerController(IRagAnalysisQueue queue)
     {
-        _pageAnalyzer = pageAnalyzer;
-        _chunkIngestor = chunkIngestor;
-        _scraper = scraper;
+        _queue = queue;
     }
 
     [HttpPost("analyze")]
@@ -68,19 +61,21 @@ public class RAGAnalyzerController : ControllerBase
 
     private async Task<IActionResult> AnalyzeInternal(UrlAnalysisRequest request)
     {
-        var results = new List<AnalysisResult>();
+        var tasks = new List<Task<AnalysisResult?>>();
 
         foreach (var url in request.Urls)
         {
-            var text = await _scraper.ScrapeTextAsync(url);
-            var analysis = await _pageAnalyzer.AnalyzePageAsync(url, request.Keywords);
-            if (analysis != null)
+            var queueRequest = new RagAnalysisRequest
             {
-                results.Add(analysis);
-                await _chunkIngestor.IngestChunksAsync(url, text);
-            }
+                Url = url,
+                Keywords = request.Keywords
+            };
+
+            _queue.Enqueue(queueRequest);
+            tasks.Add(queueRequest.Completion.Task);
         }
 
+        var results = (await Task.WhenAll(tasks)).Where(r => r != null).ToList()!;
         return Ok(results);
     }
 
