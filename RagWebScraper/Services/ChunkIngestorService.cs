@@ -1,7 +1,16 @@
-﻿namespace RagWebScraper.Services;
+namespace RagWebScraper.Services;
 
+/// <summary>
+/// Service used to ingest chunks of text into the vector store.
+/// </summary>
 public interface IChunkIngestorService
 {
+    /// <summary>
+    /// Splits and stores the provided text with associated metadata.
+    /// </summary>
+    /// <param name="sourceLabel">Label used to identify the text source.</param>
+    /// <param name="text">The text to ingest.</param>
+    /// <param name="extraMetadata">Optional additional metadata.</param>
     Task IngestChunksAsync(string sourceLabel, string text, Dictionary<string, object>? extraMetadata = null);
 }
 
@@ -29,10 +38,10 @@ public class ChunkIngestorService : IChunkIngestorService
                 var embedding = await _embeddingService.GetEmbeddingAsync(chunk);
 
                 var metadata = new Dictionary<string, object>
-            {
-                { "ChunkText", chunk },
-                { "Source", sourceLabel }
-            };
+                {
+                    { "ChunkText", chunk },
+                    { "Source", sourceLabel }
+                };
 
                 if (extraMetadata != null)
                 {
