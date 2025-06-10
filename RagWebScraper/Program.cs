@@ -56,6 +56,10 @@ builder.Services.AddSingleton<IEmbeddingService>(new EmbeddingService(openAiKey)
 builder.Services.AddSingleton<IChunkIngestorService, ChunkIngestorService>();
 builder.Services.AddSingleton<IPdfProcessingQueue, PdfProcessingQueue>();
 builder.Services.AddHostedService<PdfProcessingWorker>();
+builder.Services.AddSingleton<IRagAnalysisQueue, RagAnalysisQueue>();
+builder.Services.AddHostedService<RagAnalysisWorker>();
+builder.Services.AddSingleton<IRagQueryQueue, RagQueryQueue>();
+builder.Services.AddHostedService<RagQueryWorker>();
 
 // Analysis / AI
 builder.Services.AddSingleton<ISentimentAnalyzer, SentimentAnalyzerService>();

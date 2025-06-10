@@ -6,13 +6,11 @@ using RagWebScraper.Services;
 [Route("api/rag")]
 public class RAGQueryController : ControllerBase
 {
-    private readonly IEmbeddingService _embedding;
-    private readonly VectorStoreService _vectorStore;
+    private readonly IRagQueryQueue _queue;
 
-    public RAGQueryController(IEmbeddingService embedding, VectorStoreService vectorStore)
+    public RAGQueryController(IRagQueryQueue queue)
     {
-        _embedding = embedding;
-        _vectorStore = vectorStore;
+        _queue = queue;
     }
 
     [HttpPost("query")]
@@ -21,12 +19,9 @@ public class RAGQueryController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Query))
             return BadRequest("Query cannot be empty.");
 
-        var embedding = await _embedding.GetEmbeddingAsync(request.Query);
-        var results = await _vectorStore.QueryAsync(embedding);
-
-        return Ok(results.Select(r =>
-            r.payload != null && r.payload.ContainsKey("ChunkText")
-                ? r.payload["ChunkText"]?.ToString()
-                : "[Missing ChunkText]").ToList());
+        var queueRequest = new RagQueryRequest { Query = request.Query };
+        _queue.Enqueue(queueRequest);
+        var results = await queueRequest.Completion.Task;
+        return Ok(results);
     }
 }
