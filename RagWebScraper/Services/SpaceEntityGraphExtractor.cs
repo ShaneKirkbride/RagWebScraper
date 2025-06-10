@@ -1,4 +1,3 @@
-﻿using System.Text.RegularExpressions;
 using RagWebScraper.Models;
 
 namespace RagWebScraper.Services
@@ -16,7 +15,7 @@ namespace RagWebScraper.Services
         {
             var nodes = new Dictionary<string, EntityNode>(StringComparer.OrdinalIgnoreCase);
             var edges = new List<EntityEdge>();
-            var sentences = SplitIntoSentences(text);
+            var sentences = SentenceSplitter.Split(text);
 
             foreach (var sentence in sentences)
             {
@@ -141,18 +140,5 @@ namespace RagWebScraper.Services
             return text.ToLowerInvariant().Replace(" ", "_");
         }
 
-        private static List<string> SplitIntoSentences(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return new List<string>();
-
-            string abbrev = @"(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|vs|etc|e\.g|i\.e|U\.S|U\.K|Inc|Ltd|St|Mt|No)\.";
-            string pattern = $@"(?<!\b{abbrev})(?<=[.!?])(?=\s?[A-Z])";
-
-            return Regex.Split(text, pattern, RegexOptions.IgnoreCase)
-                        .Where(s => !string.IsNullOrWhiteSpace(s))
-                        .Select(s => s.Trim())
-                        .ToList();
-        }
-    }
+}
 }

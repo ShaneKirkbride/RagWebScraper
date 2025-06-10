@@ -54,21 +54,12 @@ else
                     ? result.FileName
                     : "Unknown";
 
-            pageLabels.Add(Truncate(label));
+            pageLabels.Add(TextUtils.Truncate(label));
         }
 
         chartNeedsUpdate = true;
     }
 
-    private string Truncate(string value, int maxLength = 50)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return "Unknown";
-
-        return value.Length <= maxLength
-            ? value
-            : value.Substring(0, maxLength) + "...";
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

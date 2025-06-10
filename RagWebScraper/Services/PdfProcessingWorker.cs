@@ -1,12 +1,9 @@
 ﻿namespace RagWebScraper.Services;
 
 using RagWebScraper.Models;
-using RagWebScraper.Services;
-using System.Text.RegularExpressions;
 
-public class PdfProcessingWorker : BackgroundService
+public class PdfProcessingWorker : ChannelBackgroundWorker<PdfProcessingRequest>
 {
-    private readonly IPdfProcessingQueue _queue;
     private readonly ILogger<PdfProcessingWorker> _logger;
     private readonly ITextExtractor _extractor;
     private readonly ISentimentAnalyzer _sentiment;
@@ -24,8 +21,8 @@ public class PdfProcessingWorker : BackgroundService
         IKeywordContextSentimentService contextSentiment,
         IChunkIngestorService chunkIngestor,
         PdfResultStore resultStore) // ✅ Inject constructor dependency
+        : base(queue, logger)
     {
-        _queue = queue;
         _logger = logger;
         _extractor = extractor;
         _sentiment = sentiment;
@@ -35,50 +32,32 @@ public class PdfProcessingWorker : BackgroundService
         _resultStore = resultStore;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ProcessRequestAsync(PdfProcessingRequest request, CancellationToken stoppingToken)
     {
-        await foreach (var request in _queue.ReadAllAsync(stoppingToken))
+        var text = _extractor.ExtractText(request.FileStream);
+        var sentences = SentenceSplitter.Split(text);
+
+        var sentiment = _sentiment.AnalyzeSentiment(text);
+        var keywords = _keywordExtractor.ExtractKeywords(text, request.Keywords);
+        var keywordSentiment = _contextSentiment.ExtractKeywordSentiments(text, request.Keywords);
+
+        await _chunkIngestor.IngestChunksAsync(request.FileName, text, new Dictionary<string, object>
         {
-            try
-            {
-                var text = _extractor.ExtractText(request.FileStream);
-                var sentences = SplitIntoSentences(text);
-                
-                var sentiment = _sentiment.AnalyzeSentiment(text);
-                var keywords = _keywordExtractor.ExtractKeywords(text, request.Keywords);
-                var keywordSentiment = _contextSentiment.ExtractKeywordSentiments(text, request.Keywords);
+            { "Sentiment", sentiment },
+            { "SourceType", "PDF" }
+        });
 
-                await _chunkIngestor.IngestChunksAsync(request.FileName, text, new Dictionary<string, object>
-                {
-                    { "Sentiment", sentiment },
-                    { "SourceType", "PDF" }
-                });
+        _resultStore.Add(new AnalysisResult(links: new List<LinkedPassage>())
+        {
+            FileName = request.FileName,
+            PageSentimentScore = sentiment,
+            KeywordFrequencies = keywords,
+            KeywordSentimentScores = keywordSentiment,
+            RawSentences = sentences,
+            RawText = text
+        });
 
-                _resultStore.Add(new AnalysisResult(links: new List<LinkedPassage>())
-                {
-                    FileName = request.FileName,
-                    PageSentimentScore = sentiment,
-                    KeywordFrequencies = keywords,
-                    KeywordSentimentScores = keywordSentiment,
-                    RawSentences = sentences,
-                    RawText = text
-                });
-
-                _logger.LogInformation("Processed {FileName}", request.FileName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to process {FileName}", request.FileName);
-            }
-        }
+        _logger.LogInformation("Processed {FileName}", request.FileName);
     }
 
-    private static List<string> SplitIntoSentences(string text)
-    {
-        var pattern = @"(?<=[\.!\?])\s+(?=[A-Z])";
-        return Regex.Split(text, pattern)
-                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Select(s => s.Trim())
-                    .ToList();
-    }
 }

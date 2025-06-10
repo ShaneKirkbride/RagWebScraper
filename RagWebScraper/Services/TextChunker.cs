@@ -14,7 +14,7 @@
             if (string.IsNullOrWhiteSpace(text))
                 return new List<string>();
 
-            var sentences = SplitToSentences(text);
+            var sentences = SentenceSplitter.Split(text);
 
             var chunks = new List<string>();
             var currentChunk = new List<string>();
@@ -49,15 +49,5 @@
             return text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
         }
 
-        /// <summary>
-        /// Very naive sentence splitter. For production, use ML-based sentence segmentation.
-        /// </summary>
-        private List<string> SplitToSentences(string text)
-        {
-            return text.Split(new[] { ".", "!", "?" }, StringSplitOptions.RemoveEmptyEntries)
-                       .Select(s => s.Trim() + ".")
-                       .Where(s => !string.IsNullOrWhiteSpace(s))
-                       .ToList();
-        }
-    }
+}
 }

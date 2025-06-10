@@ -1,4 +1,4 @@
-﻿@using RagWebScraper.Models
+@using RagWebScraper.Models
 @code {
     [Parameter]
     public IEnumerable<LinkedPassage> Links { get; set; } = Enumerable.Empty<LinkedPassage>();
@@ -14,9 +14,9 @@ else
         @foreach (var link in Links)
         {
             <div class="list-group-item">
-                <strong>@link.SourceIdA</strong>: @Truncate(link.TextA, 300)
+                <strong>@link.SourceIdA</strong>: @TextUtils.Truncate(link.TextA, 300)
                 <br />
-                <strong>@link.SourceIdB</strong>: @Truncate(link.TextB, 300)
+                <strong>@link.SourceIdB</strong>: @TextUtils.Truncate(link.TextB, 300)
                 <br />
                 <span class="badge bg-secondary">Similarity: @($"{link.Similarity:P1}")</span>
             </div>
@@ -24,8 +24,3 @@ else
     </div>
 }
 
-@code {
-    private static string Truncate(string text, int maxLength) =>
-        string.IsNullOrWhiteSpace(text) ? "" :
-        (text.Length <= maxLength ? text : text[..maxLength] + "...");
-}

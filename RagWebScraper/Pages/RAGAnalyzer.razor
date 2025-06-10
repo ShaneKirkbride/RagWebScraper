@@ -50,8 +50,7 @@
         </div>
     </div>
 
-    @foreach (var res in AppState.UrlAnalysisResults)
-    {
+    <Virtualize Items="AppState.UrlAnalysisResults" Context="res">
         <div class="card mb-3">
             <div class="card-body">
                 <h5>@res.Url</h5>
@@ -74,7 +73,7 @@
                 <KeywordChart Frequencies="@res.KeywordFrequencies" />
             </div>
         </div>
-    }
+    </Virtualize>
 }
 
 @code {

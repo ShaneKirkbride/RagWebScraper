@@ -1,7 +1,6 @@
 namespace RagWebScraper.Services;
 
-public interface IRagQueryQueue
+public interface IRagQueryQueue : IRequestQueue<RagQueryRequest>
 {
-    void Enqueue(RagQueryRequest request);
-    IAsyncEnumerable<RagQueryRequest> ReadAllAsync(CancellationToken cancellationToken);
 }
+
