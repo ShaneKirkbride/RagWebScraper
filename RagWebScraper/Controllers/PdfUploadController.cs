@@ -5,11 +5,6 @@ using RagWebScraper.Services;
 using static RagWebScraper.Pages.UploadPdf;
 using static RagWebScraper.Pages.KnowledgeGraph;
 
-public interface IPdfAnalyzerService
-{
-    Task<AnalysisResult> AnalyzePdfAsync(string fileName, Stream stream, List<string> keywords);
-}
-
 [ApiController]
 [Route("api/pdf")]
 public class PdfUploadController : ControllerBase

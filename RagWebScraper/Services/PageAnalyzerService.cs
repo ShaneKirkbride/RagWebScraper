@@ -27,12 +27,15 @@ public class PageAnalyzerService : IPageAnalyzerService
         if (string.IsNullOrWhiteSpace(text))
             return null;
 
+        var sentences = SentenceSplitter.Split(text);
         return new AnalysisResult(Enumerable.Empty<LinkedPassage>())
         {
             Url = url,
             PageSentimentScore = _sentiment.AnalyzeSentiment(text),
             KeywordFrequencies = _keywords.ExtractKeywords(text, keywords),
-            KeywordSentimentScores = _keywordContextSentimentService.ExtractKeywordSentiments(text, keywords)
+            KeywordSentimentScores = _keywordContextSentimentService.ExtractKeywordSentiments(text, keywords),
+            RawText = text,
+            RawSentences = sentences
         };
     }
 }
