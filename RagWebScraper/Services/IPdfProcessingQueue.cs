@@ -1,8 +1,6 @@
 ﻿namespace RagWebScraper.Services
 {
-    public interface IPdfProcessingQueue
+    public interface IPdfProcessingQueue : IRequestQueue<PdfProcessingRequest>
     {
-        void Enqueue(PdfProcessingRequest request);
-        IAsyncEnumerable<PdfProcessingRequest> ReadAllAsync(CancellationToken cancellationToken);
     }
 }
