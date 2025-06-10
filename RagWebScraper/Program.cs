@@ -8,7 +8,6 @@ using OpenAI;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
 using RagWebScraper.Shared;
-using RagWebScraper.Factories;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Charts;
@@ -71,7 +70,6 @@ builder.Services.AddScoped<IRagAnalyzerService, RagAnalyzerService>();
 builder.Services.AddScoped<IKnowledgeGraphService, KnowledgeGraphService>();
 builder.Services.AddScoped<IEntityGraphExtractor, SpaceEntityGraphExtractor>();
 builder.Services.AddScoped<ICrossDocumentLinker, SemanticCrossLinker>();
-builder.Services.AddTransient<IAnalyzerControllerFactory, AnalyzerControllerFactory>();
 
 // ---------------------------------------------
 // HttpClients

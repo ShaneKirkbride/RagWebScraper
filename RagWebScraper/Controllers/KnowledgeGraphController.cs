@@ -1,12 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
-using RagWebScraper.Factories;
 
 namespace RagWebScraper.Controllers;
 [ApiController]
 [Route("api/KnowledgeGraph")]
-public class KnowledgeGraphController : ControllerBase, IAnalyzerController
+public class KnowledgeGraphController : ControllerBase
 {
     private readonly IKnowledgeGraphService _graphService;
 
@@ -36,11 +35,4 @@ public class KnowledgeGraphController : ControllerBase, IAnalyzerController
         return Ok(graph);
     }
 
-    async Task<IActionResult> IAnalyzerController.AnalyzeAsync(object request)
-    {
-        if (request is not string text)
-            return new BadRequestObjectResult("Invalid request type.");
-
-        return await AnalyzeTextInternal(text);
-    }
 }

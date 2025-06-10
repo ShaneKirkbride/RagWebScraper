@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
-using RagWebScraper.Factories;
 
 public interface IPageAnalyzerService
 {
@@ -47,7 +46,7 @@ public class PageAnalyzerService : IPageAnalyzerService
 // Controller using SRP and DIP
 [ApiController]
 [Route("api/rag")]
-public class RAGAnalyzerController : ControllerBase, IAnalyzerController
+public class RAGAnalyzerController : ControllerBase
 {
     private readonly IPageAnalyzerService _pageAnalyzer;
     private readonly IChunkIngestorService _chunkIngestor;
@@ -85,11 +84,4 @@ public class RAGAnalyzerController : ControllerBase, IAnalyzerController
         return Ok(results);
     }
 
-    async Task<IActionResult> IAnalyzerController.AnalyzeAsync(object request)
-    {
-        if (request is not UrlAnalysisRequest urlRequest)
-            return new BadRequestObjectResult("Invalid request type.");
-
-        return await AnalyzeInternal(urlRequest);
-    }
 }
