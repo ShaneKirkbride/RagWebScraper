@@ -56,3 +56,11 @@ h1:focus {
     font-weight: bold;
 }
 
+pre.xml-display {
+    white-space: pre-wrap;
+    font-family: Consolas, "Courier New", monospace;
+}
+pre.xml-display .xml-tag {
+    color: #1b6ec2;
+    font-weight: bold;
+}
