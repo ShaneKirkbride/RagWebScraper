@@ -4,6 +4,7 @@ using RagWebScraper.Models;
 using RagWebScraper.Services;
 using static RagWebScraper.Pages.UploadPdf;
 using static RagWebScraper.Pages.KnowledgeGraph;
+using RagWebScraper.Factories;
 
 public interface IPdfAnalyzerService
 {
@@ -12,7 +13,7 @@ public interface IPdfAnalyzerService
 
 [ApiController]
 [Route("api/pdf")]
-public class PdfUploadController : ControllerBase
+public class PdfUploadController : ControllerBase, IAnalyzerController
 {
     private readonly ITextExtractor _extractor;
     private readonly ISentimentAnalyzer _sentiment;
@@ -47,7 +48,10 @@ public class PdfUploadController : ControllerBase
     }
 
     [HttpPost("analyze")]
-    public async Task<IActionResult> AnalyzePdf([FromForm] IFormFileCollection files, [FromForm] string keywords)
+    public Task<IActionResult> AnalyzePdf([FromForm] IFormFileCollection files, [FromForm] string keywords) =>
+        AnalyzePdfInternal(files, keywords);
+
+    private async Task<IActionResult> AnalyzePdfInternal(IFormFileCollection files, string keywords)
     {
         if (files == null || files.Count == 0)
             return BadRequest("No files uploaded.");
@@ -73,5 +77,13 @@ public class PdfUploadController : ControllerBase
         }
 
         return Ok(new { Message = "PDFs are being processed in the background." });
+    }
+
+    async Task<IActionResult> IAnalyzerController.AnalyzeAsync(object request)
+    {
+        if (request is not PdfUploadRequest pdf)
+            return new BadRequestObjectResult("Invalid request type.");
+
+        return await AnalyzePdfInternal(pdf.Files, pdf.Keywords);
     }
 }
