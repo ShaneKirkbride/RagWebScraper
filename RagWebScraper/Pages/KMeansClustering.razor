@@ -1,6 +1,7 @@
 @page "/cluster"
 @inject IDocumentClusterer Clusterer
 @inject AppStateService AppState
+@inject ITextExtractor TextExtractor
 @using RagWebScraper.Models
 @using Microsoft.AspNetCore.Components.Forms
 
@@ -11,12 +12,8 @@
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <div class="mb-3">
-            <label class="form-label fw-bold">Enter documents (one per line):</label>
-            <textarea class="form-control" rows="6" @bind="documentsInput"></textarea>
-        </div>
-        <div class="mb-3">
-            <label class="form-label fw-bold">Upload text files:</label>
-            <InputFile OnChange="HandleFileUpload" multiple accept=".txt" />
+            <label class="form-label fw-bold">Upload documents:</label>
+            <InputFile OnChange="HandleFileUpload" multiple accept=".txt,.pdf" />
             @if (selectedFileNames.Any())
             {
                 <ul class="mt-2">
@@ -67,7 +64,6 @@
 }
 
 @code {
-    private string documentsInput = string.Empty;
     private int clusterCount = 3;
     private Dictionary<Guid, int>? clusterResults;
     private readonly Dictionary<Guid, string> docLabels = new();
@@ -87,19 +83,20 @@
         var docs = new List<Document>();
         docLabels.Clear();
 
-        // from textarea
-        foreach (var text in documentsInput.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var id = Guid.NewGuid();
-            docLabels[id] = $"Input: {text}";
-            docs.Add(new Document(id, text));
-        }
-
         // from uploaded files
         foreach (var file in selectedFiles)
         {
-            using var reader = new StreamReader(file.OpenReadStream(10_485_760)); // 10MB
-            var text = await reader.ReadToEndAsync();
+            using var stream = file.OpenReadStream(10_485_760); // 10MB
+            string text;
+            if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                text = TextExtractor.ExtractText(stream);
+            }
+            else
+            {
+                using var reader = new StreamReader(stream);
+                text = await reader.ReadToEndAsync();
+            }
             var id = Guid.NewGuid();
             docLabels[id] = $"File: {file.Name}";
             docs.Add(new Document(id, text));

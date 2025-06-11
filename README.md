@@ -90,6 +90,13 @@ dotnet test
 2. Ask natural language questions
 3. See top-matching chunks from previously ingested content
 
+### Cluster Documents
+
+1. Navigate to `/cluster`
+2. Upload `.txt` or `.pdf` files to use as documents
+3. Optionally include previously analyzed URLs or PDFs
+4. Choose the desired number of clusters and press **Cluster**
+
 ---
 
 ## Example Output

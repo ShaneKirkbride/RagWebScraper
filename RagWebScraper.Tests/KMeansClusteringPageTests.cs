@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.AspNetCore.Components.Forms;
+using System.IO;
 using System.Threading.Tasks;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
@@ -25,6 +27,37 @@ public class KMeansClusteringPageTests
         }
     }
 
+    private class StubBrowserFile : IBrowserFile
+    {
+        private readonly Stream _stream;
+
+        public StubBrowserFile(string name, string content)
+        {
+            Name = name;
+            _stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+        }
+
+        public DateTimeOffset LastModified => DateTimeOffset.Now;
+        public string Name { get; }
+        public long Size => _stream.Length;
+        public string ContentType => Name.EndsWith(".pdf") ? "application/pdf" : "text/plain";
+
+        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
+        {
+            _stream.Position = 0;
+            return _stream;
+        }
+    }
+
+    private class StubTextExtractor : ITextExtractor
+    {
+        public string ExtractText(Stream pdfStream)
+        {
+            using var reader = new StreamReader(pdfStream, leaveOpen: true);
+            return reader.ReadToEnd();
+        }
+    }
+
     private static object GetPrivateField(object obj, string name)
         => obj.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(obj)!;
@@ -40,7 +73,7 @@ public class KMeansClusteringPageTests
     }
 
     [Fact]
-    public async Task ClusterDocs_ParsesInputAndCallsClusterer()
+    public async Task ClusterDocs_ReadsFilesAndCallsClusterer()
     {
         var clusterer = new StubClusterer();
         var page = new RagWebScraper.Pages.KMeansClustering();
@@ -48,13 +81,22 @@ public class KMeansClusteringPageTests
             .SetValue(page, clusterer);
         page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, new AppStateService());
+        page.GetType().GetProperty("TextExtractor", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(page, new StubTextExtractor());
 
-        SetPrivateField(page, "documentsInput", "A\nB");
+        var files = new List<IBrowserFile>
+        {
+            new StubBrowserFile("a.txt", "Alpha"),
+            new StubBrowserFile("b.pdf", "Beta")
+        };
+        SetPrivateField(page, "selectedFiles", files);
         SetPrivateField(page, "clusterCount", 2);
 
         await InvokePrivateMethod(page, "ClusterDocs");
 
         Assert.Equal(2, clusterer.ReceivedDocs!.Count);
+        Assert.Equal("Alpha", clusterer.ReceivedDocs[0].Text);
+        Assert.Equal("Beta", clusterer.ReceivedDocs[1].Text);
         Assert.Equal(2, clusterer.ReceivedK);
         Assert.Same(clusterer.Result, GetPrivateField(page, "clusterResults"));
     }
@@ -68,8 +110,10 @@ public class KMeansClusteringPageTests
             .SetValue(page, clusterer);
         page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, new AppStateService());
+        page.GetType().GetProperty("TextExtractor", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(page, new StubTextExtractor());
 
-        SetPrivateField(page, "documentsInput", string.Empty);
+        SetPrivateField(page, "selectedFiles", new List<IBrowserFile>());
         await InvokePrivateMethod(page, "ClusterDocs");
 
         Assert.Null(GetPrivateField(page, "clusterResults"));

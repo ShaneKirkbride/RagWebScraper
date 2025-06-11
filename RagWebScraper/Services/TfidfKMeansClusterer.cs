@@ -29,7 +29,9 @@ namespace RagWebScraper.Services
             var data = documentList.Select(d => new DocumentData { Text = d.Text });
             var dataView = _mlContext.Data.LoadFromEnumerable(data);
 
-            var pipeline = _mlContext.Transforms.Text.FeaturizeText("Features", nameof(Document.Text))
+            var pipeline = _mlContext.Transforms.Text.FeaturizeText("Features", nameof(DocumentData.Text))
+                .Append(_mlContext.Transforms.NormalizeLpNorm("Features"))
+                .AppendCacheCheckpoint(_mlContext)
                 .Append(_mlContext.Clustering.Trainers.KMeans(featureColumnName: "Features", numberOfClusters: numberOfClusters));
 
             var model = pipeline.Fit(dataView);
