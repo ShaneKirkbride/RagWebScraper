@@ -46,6 +46,8 @@ public class KMeansClusteringPageTests
         var page = new RagWebScraper.Pages.KMeansClustering();
         page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, clusterer);
+        page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(page, new AppStateService());
 
         SetPrivateField(page, "documentsInput", "A\nB");
         SetPrivateField(page, "clusterCount", 2);
@@ -64,6 +66,8 @@ public class KMeansClusteringPageTests
         var page = new RagWebScraper.Pages.KMeansClustering();
         page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, clusterer);
+        page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(page, new AppStateService());
 
         SetPrivateField(page, "documentsInput", string.Empty);
         await InvokePrivateMethod(page, "ClusterDocs");

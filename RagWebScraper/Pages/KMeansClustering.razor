@@ -1,6 +1,10 @@
 @page "/cluster"
 @inject IDocumentClusterer Clusterer
+@inject AppStateService AppState
 @using RagWebScraper.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+@implements IDisposable
 
 <h3 class="mb-3 text-primary">K-Means Document Clustering</h3>
 
@@ -9,6 +13,31 @@
         <div class="mb-3">
             <label class="form-label fw-bold">Enter documents (one per line):</label>
             <textarea class="form-control" rows="6" @bind="documentsInput"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Upload text files:</label>
+            <InputFile OnChange="HandleFileUpload" multiple accept=".txt" />
+            @if (selectedFileNames.Any())
+            {
+                <ul class="mt-2">
+                    @foreach (var name in selectedFileNames)
+                    {
+                        <li>@name</li>
+                    }
+                </ul>
+            }
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="includeUrlDocs" @bind="includeUrlDocs" />
+            <label class="form-check-label" for="includeUrlDocs">
+                Include analyzed URLs
+            </label>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="includePdfDocs" @bind="includePdfDocs" />
+            <label class="form-check-label" for="includePdfDocs">
+                Include analyzed PDFs
+            </label>
         </div>
         <div class="mb-3">
             <label class="form-label fw-bold">Number of clusters:</label>
@@ -30,7 +59,7 @@
             <ul>
                 @foreach (var doc in group)
                 {
-                    <li>@docTexts[doc.Key]</li>
+                    <li>@docLabels[doc.Key]</li>
                 }
             </ul>
         </div>
@@ -41,20 +70,69 @@
     private string documentsInput = string.Empty;
     private int clusterCount = 3;
     private Dictionary<Guid, int>? clusterResults;
-    private readonly Dictionary<Guid, string> docTexts = new();
+    private readonly Dictionary<Guid, string> docLabels = new();
+    private List<IBrowserFile> selectedFiles = new();
+    private List<string> selectedFileNames = new();
+    private bool includeUrlDocs = true;
+    private bool includePdfDocs = true;
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        selectedFiles = e.GetMultipleFiles().ToList();
+        selectedFileNames = selectedFiles.Select(f => f.Name).ToList();
+    }
+
+    private async Task<List<Document>> GetDocumentsAsync()
+    {
+        var docs = new List<Document>();
+        docLabels.Clear();
+
+        // from textarea
+        foreach (var text in documentsInput.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var id = Guid.NewGuid();
+            docLabels[id] = $"Input: {text}";
+            docs.Add(new Document(id, text));
+        }
+
+        // from uploaded files
+        foreach (var file in selectedFiles)
+        {
+            using var reader = new StreamReader(file.OpenReadStream(10_485_760)); // 10MB
+            var text = await reader.ReadToEndAsync();
+            var id = Guid.NewGuid();
+            docLabels[id] = $"File: {file.Name}";
+            docs.Add(new Document(id, text));
+        }
+
+        // include URL results
+        if (includeUrlDocs && AppState.UrlAnalysisResults.Any())
+        {
+            foreach (var res in AppState.UrlAnalysisResults)
+            {
+                var id = Guid.NewGuid();
+                docLabels[id] = $"URL: {res.Url}";
+                docs.Add(new Document(id, res.RawText));
+            }
+        }
+
+        // include PDF results
+        if (includePdfDocs && AppState.PdfAnalysisResults.Any())
+        {
+            foreach (var res in AppState.PdfAnalysisResults)
+            {
+                var id = Guid.NewGuid();
+                docLabels[id] = $"PDF: {res.FileName}";
+                docs.Add(new Document(id, res.RawText));
+            }
+        }
+
+        return docs;
+    }
 
     private async Task ClusterDocs()
     {
-        docTexts.Clear();
-        var documents = documentsInput
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(text =>
-            {
-                var id = Guid.NewGuid();
-                docTexts[id] = text;
-                return new Document(id, text);
-            })
-            .ToList();
+        var documents = await GetDocumentsAsync();
 
         if (documents.Count == 0)
         {
@@ -63,5 +141,15 @@
         }
 
         clusterResults = await Clusterer.ClusterAsync(documents, clusterCount);
+    }
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
     }
 }
