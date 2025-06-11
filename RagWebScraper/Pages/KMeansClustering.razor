@@ -1,0 +1,67 @@
+@page "/cluster"
+@inject IDocumentClusterer Clusterer
+@using RagWebScraper.Models
+
+<h3 class="mb-3 text-primary">K-Means Document Clustering</h3>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Enter documents (one per line):</label>
+            <textarea class="form-control" rows="6" @bind="documentsInput"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Number of clusters:</label>
+            <InputNumber class="form-control" @bind-Value="clusterCount" Min="2" />
+        </div>
+        <button class="btn btn-primary" @onclick="ClusterDocs">Cluster</button>
+    </div>
+</div>
+
+@if (clusterResults?.Any() == true)
+{
+    <h4 class="text-success">Results</h4>
+    <ClusterChart Results="clusterResults" />
+
+    @foreach (var group in clusterResults.GroupBy(r => r.Value))
+    {
+        <div class="mb-3">
+            <h5>Cluster @group.Key</h5>
+            <ul>
+                @foreach (var doc in group)
+                {
+                    <li>@docTexts[doc.Key]</li>
+                }
+            </ul>
+        </div>
+    }
+}
+
+@code {
+    private string documentsInput = string.Empty;
+    private int clusterCount = 3;
+    private Dictionary<Guid, int>? clusterResults;
+    private readonly Dictionary<Guid, string> docTexts = new();
+
+    private async Task ClusterDocs()
+    {
+        docTexts.Clear();
+        var documents = documentsInput
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(text =>
+            {
+                var id = Guid.NewGuid();
+                docTexts[id] = text;
+                return new Document(id, text);
+            })
+            .ToList();
+
+        if (documents.Count == 0)
+        {
+            clusterResults = null;
+            return;
+        }
+
+        clusterResults = await Clusterer.ClusterAsync(documents, clusterCount);
+    }
+}

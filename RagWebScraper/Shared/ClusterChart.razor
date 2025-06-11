@@ -1,0 +1,69 @@
+@using Blazorise.Charts
+
+@if (Results == null || Results.Count == 0)
+{
+    <div class="alert alert-info">No clustering results available.</div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">Cluster Counts</div>
+        <div class="card-body">
+            <BarChart @ref="clusterChart" TItem="int" Datasets="@(new[] { clusterDataset })" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Dictionary<Guid, int>? Results { get; set; }
+
+    private BarChart<int> clusterChart;
+
+    private BarChartDataset<int> clusterDataset = new()
+    {
+        Label = "Documents",
+        BackgroundColor = "rgba(153, 102, 255, 0.6)",
+        BorderColor = "rgba(153, 102, 255, 1)",
+        BorderWidth = 1
+    };
+
+    private List<string> clusterLabels = new();
+    private bool chartNeedsUpdate;
+
+    protected override void OnParametersSet()
+    {
+        if (clusterDataset.Data != null)
+            clusterDataset.Data.Clear();
+        else
+            clusterDataset.Data = new List<int>();
+
+        clusterLabels.Clear();
+
+        if (Results != null)
+        {
+            var counts = Results.Values
+                .GroupBy(v => v)
+                .OrderBy(g => g.Key)
+                .Select(g => new { ClusterId = g.Key, Count = g.Count() });
+
+            foreach (var item in counts)
+            {
+                clusterLabels.Add($"Cluster {item.ClusterId}");
+                clusterDataset.Data.Add(item.Count);
+            }
+        }
+
+        chartNeedsUpdate = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (chartNeedsUpdate && clusterChart != null)
+        {
+            await clusterChart.Clear();
+            await clusterChart.AddLabelsDatasetsAndUpdate(clusterLabels, clusterDataset);
+            chartNeedsUpdate = false;
+        }
+    }
+}

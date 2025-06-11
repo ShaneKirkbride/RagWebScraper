@@ -67,6 +67,7 @@ builder.Services.AddSingleton<IKeywordExtractor, KeywordExtractorService>();
 builder.Services.AddSingleton<IKeywordContextSentimentService, KeywordContextSentimentService>();
 builder.Services.AddSingleton<KeywordSentimentSummaryService>();
 builder.Services.AddSingleton<IPageAnalyzerService, PageAnalyzerService>();
+builder.Services.AddSingleton<IDocumentClusterer, TfidfKMeansClusterer>();
 
 // Scoped / Page-bound
 builder.Services.AddScoped<IAnalysisService, PdfAnalysisService>();
