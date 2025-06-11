@@ -24,4 +24,21 @@ public class DocumentClustererTests
         var unique = new HashSet<int>(result.Values);
         Assert.Equal(2, unique.Count);
     }
+
+    [Fact]
+    public async Task ClusterAsync_DoesNotThrowSchemaMismatch()
+    {
+        var docs = new[]
+        {
+            new Document(Guid.NewGuid(), new string('a', 50)),
+            new Document(Guid.NewGuid(), new string('b', 100)),
+            new Document(Guid.NewGuid(), new string('c', 150))
+        };
+
+        IDocumentClusterer clusterer = new TfidfKMeansClusterer();
+
+        var ex = await Record.ExceptionAsync(() => clusterer.ClusterAsync(docs, 2));
+
+        Assert.Null(ex);
+    }
 }
