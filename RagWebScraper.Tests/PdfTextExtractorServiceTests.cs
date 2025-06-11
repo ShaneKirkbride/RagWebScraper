@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using RagWebScraper.Services;
 using Xunit;
+using System.Threading.Tasks;
 
 namespace RagWebScraper.Tests;
 
@@ -37,14 +38,14 @@ public class PdfTextExtractorServiceTests
     }
 
     [Fact]
-    public void ExtractText_ReadsFromNonSeekableStream()
+    public async Task ExtractText_ReadsFromNonSeekableStream()
     {
         // Arrange
         var service = new PdfTextExtractorService();
         using var stream = CreateNonSeekablePdfStream();
 
         // Act
-        var text = service.ExtractText(stream);
+        var text = await service.ExtractTextAsync(stream);
 
         // Assert
         Assert.Contains("Hello, world!", text);
