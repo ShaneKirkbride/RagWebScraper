@@ -1,50 +1,67 @@
-﻿namespace RagWebScraper.Services;
+namespace RagWebScraper.Services;
 
 using System.Text;
+using System.IO;
 using UglyToad.PdfPig;
 public class PdfTextExtractorService : ITextExtractor
 {
     public string ExtractText(Stream pdfStream)
     {
-        using var document = PdfDocument.Open(pdfStream);
-        var builder = new StringBuilder();
-
-        foreach (var page in document.GetPages())
+        MemoryStream? buffer = null;
+        if (!pdfStream.CanSeek)
         {
-            var words = page.GetWords();
-            if (words.Any())
-            {
-                foreach (var word in words)
-                {
-                    builder.Append(word.Text);
-                    builder.Append(' ');
-                }
-            }
-            else
-            {
-                // fallback to letters if words are missing
-                var letters = page.Letters;
-                for (int i = 0; i < letters.Count; i++)
-                {
-                    builder.Append(letters[i].Value);
+            buffer = new MemoryStream();
+            pdfStream.CopyTo(buffer);
+            buffer.Position = 0;
+            pdfStream = buffer;
+        }
 
-                    if (i < letters.Count - 1)
+        try
+        {
+            using var document = PdfDocument.Open(pdfStream);
+            var builder = new StringBuilder();
+
+            foreach (var page in document.GetPages())
+            {
+                var words = page.GetWords();
+                if (words.Any())
+                {
+                    foreach (var word in words)
                     {
-                        var current = letters[i];
-                        var next = letters[i + 1];
-                        var distance = next.StartBaseLine.X - current.EndBaseLine.X;
+                        builder.Append(word.Text);
+                        builder.Append(' ');
+                    }
+                }
+                else
+                {
+                    // fallback to letters if words are missing
+                    var letters = page.Letters;
+                    for (int i = 0; i < letters.Count; i++)
+                    {
+                        builder.Append(letters[i].Value);
 
-                        if (distance > current.FontSize * 0.25)
+                        if (i < letters.Count - 1)
                         {
-                            builder.Append(' ');
+                            var current = letters[i];
+                            var next = letters[i + 1];
+                            var distance = next.StartBaseLine.X - current.EndBaseLine.X;
+
+                            if (distance > current.FontSize * 0.25)
+                            {
+                                builder.Append(' ');
+                            }
                         }
                     }
                 }
+
+                builder.AppendLine();
             }
 
-            builder.AppendLine();
+            return builder.ToString();
         }
-
-        return builder.ToString();
+        finally
+        {
+            buffer?.Dispose();
+        }
     }
 }
