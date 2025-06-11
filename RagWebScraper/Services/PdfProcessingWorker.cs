@@ -34,7 +34,7 @@ public class PdfProcessingWorker : ChannelBackgroundWorker<PdfProcessingRequest>
 
     protected override async Task ProcessRequestAsync(PdfProcessingRequest request, CancellationToken stoppingToken)
     {
-        var text = _extractor.ExtractText(request.FileStream);
+        var text = await _extractor.ExtractTextAsync(request.FileStream);
         var sentences = SentenceSplitter.Split(text);
 
         var sentiment = _sentiment.AnalyzeSentiment(text);

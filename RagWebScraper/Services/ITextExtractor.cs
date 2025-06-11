@@ -10,5 +10,5 @@ public interface ITextExtractor
     /// </summary>
     /// <param name="pdfStream">The PDF file stream.</param>
     /// <returns>The extracted plain text.</returns>
-    string ExtractText(Stream pdfStream);
+    Task<string> ExtractTextAsync(Stream pdfStream);
 }

@@ -90,7 +90,7 @@
             string text;
             if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
             {
-                text = TextExtractor.ExtractText(stream);
+                text = await TextExtractor.ExtractTextAsync(stream);
             }
             else
             {

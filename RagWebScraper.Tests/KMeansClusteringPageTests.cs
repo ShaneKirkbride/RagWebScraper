@@ -51,10 +51,10 @@ public class KMeansClusteringPageTests
 
     private class StubTextExtractor : ITextExtractor
     {
-        public string ExtractText(Stream pdfStream)
+        public Task<string> ExtractTextAsync(Stream pdfStream)
         {
             using var reader = new StreamReader(pdfStream, leaveOpen: true);
-            return reader.ReadToEnd();
+            return Task.FromResult(reader.ReadToEnd());
         }
     }
 

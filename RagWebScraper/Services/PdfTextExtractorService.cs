@@ -5,13 +5,13 @@ using System.IO;
 using UglyToad.PdfPig;
 public class PdfTextExtractorService : ITextExtractor
 {
-    public string ExtractText(Stream pdfStream)
+    public async Task<string> ExtractTextAsync(Stream pdfStream)
     {
         MemoryStream? buffer = null;
         if (!pdfStream.CanSeek)
         {
             buffer = new MemoryStream();
-            pdfStream.CopyTo(buffer);
+            await pdfStream.CopyToAsync(buffer);
             buffer.Position = 0;
             pdfStream = buffer;
         }
