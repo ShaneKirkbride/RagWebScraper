@@ -1,5 +1,6 @@
 @page "/cross-links"
 @inject AppStateService AppState
+@inject CombinedCrossDocLinkService CombinedLinkService
 @implements IDisposable
 @using RagWebScraper.Models
 @using System.Linq
@@ -9,12 +10,20 @@
 
 <h3 class="mb-3 text-primary">Cross-Document Links</h3>
 
-@if (!AppState.PdfCrossDocLinks.Any() && !AppState.UrlCrossDocLinks.Any())
+@if (!AppState.AllCrossDocLinks.Any() &&
+    !AppState.PdfCrossDocLinks.Any() &&
+    !AppState.UrlCrossDocLinks.Any())
 {
     <p>No cross-document links available. Please analyze some documents first.</p>
 }
 else
 {
+    if (AppState.AllCrossDocLinks.Any())
+    {
+        <h4 class="mt-3">All Documents</h4>
+        <CrossDocLinks Links="AppState.AllCrossDocLinks" />
+    }
+
     if (AppState.UrlCrossDocLinks.Any())
     {
         <h4 class="mt-3">Web Page Links</h4>
@@ -29,9 +38,20 @@ else
 }
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         AppState.OnChange += StateHasChanged;
+        await GenerateLinksAsync();
+    }
+
+    private async Task GenerateLinksAsync()
+    {
+        var links = await CombinedLinkService.ComputeLinksAsync(
+            AppState.UrlAnalysisResults,
+            AppState.PdfAnalysisResults);
+        AppState.SetAllCrossDocLinks(links);
+
+        StateHasChanged();
     }
 
     public void Dispose()

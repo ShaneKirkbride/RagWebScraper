@@ -75,6 +75,7 @@ builder.Services.AddScoped<IRagAnalyzerService, RagAnalyzerService>();
 builder.Services.AddScoped<IKnowledgeGraphService, KnowledgeGraphService>();
 builder.Services.AddScoped<IEntityGraphExtractor, SpaceEntityGraphExtractor>();
 builder.Services.AddScoped<ICrossDocumentLinker, SemanticCrossLinker>();
+builder.Services.AddScoped<CombinedCrossDocLinkService>();
 
 // ---------------------------------------------
 // HttpClients

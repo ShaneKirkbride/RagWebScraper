@@ -20,6 +20,7 @@ public class AppStateService
 
     public List<LinkedPassage> PdfCrossDocLinks { get; private set; } = [];
     public List<LinkedPassage> UrlCrossDocLinks { get; private set; } = [];
+    public List<LinkedPassage> AllCrossDocLinks { get; private set; } = [];
 
     public void SetEntityGraphs(IEnumerable<EntityGraph> graphs)
     {
@@ -50,6 +51,12 @@ public class AppStateService
     public void SetUrlCrossDocLinks(List<LinkedPassage> links)
     {
         UrlCrossDocLinks = links;
+        NotifyStateChanged();
+    }
+
+    public void SetAllCrossDocLinks(List<LinkedPassage> links)
+    {
+        AllCrossDocLinks = links;
         NotifyStateChanged();
     }
 
