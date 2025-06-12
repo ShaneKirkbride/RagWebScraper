@@ -73,4 +73,17 @@ public class DocumentClustererTests
 
         Assert.Null(ex);
     }
+
+    [Fact]
+    public async Task ClusterAsync_ThrowsWhenTooFewDocuments()
+    {
+        var docs = new[]
+        {
+            new Document(Guid.NewGuid(), "Only one")
+        };
+
+        IDocumentClusterer clusterer = new TfidfKMeansClusterer();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => clusterer.ClusterAsync(docs, 3));
+    }
 }

@@ -41,6 +41,10 @@
             <InputNumber class="form-control" @bind-Value="clusterCount" Min="2" />
         </div>
         <button class="btn btn-primary" @onclick="ClusterDocs">Cluster</button>
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-info mt-2">@errorMessage</div>
+        }
     </div>
 </div>
 
@@ -66,6 +70,7 @@
 @code {
     private int clusterCount = 3;
     private Dictionary<Guid, int>? clusterResults;
+    private string? errorMessage;
     private readonly Dictionary<Guid, string> docLabels = new();
     private List<IBrowserFile> selectedFiles = new();
     private List<string> selectedFileNames = new();
@@ -134,10 +139,19 @@
         if (documents.Count == 0)
         {
             clusterResults = null;
+            errorMessage = null;
             return;
         }
-
-        clusterResults = await Clusterer.ClusterAsync(documents, clusterCount);
+        try
+        {
+            clusterResults = await Clusterer.ClusterAsync(documents, clusterCount);
+            errorMessage = null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            clusterResults = null;
+            errorMessage = ex.Message;
+        }
     }
 
     protected override void OnInitialized()

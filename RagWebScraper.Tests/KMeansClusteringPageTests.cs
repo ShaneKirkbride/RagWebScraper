@@ -18,11 +18,14 @@ public class KMeansClusteringPageTests
         public List<Document>? ReceivedDocs { get; private set; }
         public int ReceivedK { get; private set; }
         public Dictionary<Guid, int> Result { get; set; } = new();
+        public Exception? ExceptionToThrow { get; set; }
 
         public Task<Dictionary<Guid, int>> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5)
         {
             ReceivedDocs = documents.ToList();
             ReceivedK = numberOfClusters;
+            if (ExceptionToThrow != null)
+                throw ExceptionToThrow;
             return Task.FromResult(Result);
         }
     }
@@ -117,5 +120,30 @@ public class KMeansClusteringPageTests
         await InvokePrivateMethod(page, "ClusterDocs");
 
         Assert.Null(GetPrivateField(page, "clusterResults"));
+    }
+
+    [Fact]
+    public async Task ClusterDocs_TooFewDocsShowsErrorMessage()
+    {
+        var clusterer = new StubClusterer
+        {
+            ExceptionToThrow = new InvalidOperationException("too few")
+        };
+        var page = new RagWebScraper.Pages.KMeansClustering();
+        page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(page, clusterer);
+        page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(page, new AppStateService());
+        page.GetType().GetProperty("TextExtractor", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(page, new StubTextExtractor());
+
+        var files = new List<IBrowserFile> { new StubBrowserFile("a.txt", "Alpha") };
+        SetPrivateField(page, "selectedFiles", files);
+        SetPrivateField(page, "clusterCount", 3);
+
+        await InvokePrivateMethod(page, "ClusterDocs");
+
+        Assert.Null(GetPrivateField(page, "clusterResults"));
+        Assert.Equal("too few", GetPrivateField(page, "errorMessage"));
     }
 }
