@@ -27,6 +27,10 @@ namespace RagWebScraper.Services
             if (documentList.Count == 0)
                 return Task.FromResult(new Dictionary<Guid, int>());
 
+            if (documentList.Count < numberOfClusters)
+                throw new InvalidOperationException(
+                    $"At least {numberOfClusters} documents are required to form {numberOfClusters} clusters.");
+
             var data = documentList.Select(d => new DocumentData { Text = d.Text });
             var dataView = _mlContext.Data.LoadFromEnumerable(data);
 
