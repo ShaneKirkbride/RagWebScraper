@@ -45,7 +45,7 @@ namespace RagWebScraper.Services
             var pipeline = _mlContext.Transforms.Text.FeaturizeText(
                     outputColumnName: "Features",
                     options: textOptions,
-                    inputColumnName: nameof(DocumentData.Text))
+                    inputColumnNames: nameof(DocumentData.Text))
                 .Append(_mlContext.Transforms.NormalizeLpNorm("Features"))
                 .AppendCacheCheckpoint(_mlContext)
                 .Append(_mlContext.Clustering.Trainers.KMeans(featureColumnName: "Features", numberOfClusters: numberOfClusters));
