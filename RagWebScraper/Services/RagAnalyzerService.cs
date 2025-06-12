@@ -15,6 +15,9 @@ public sealed class RagAnalyzerService : IRagAnalyzerService
 
     public async Task<RagAnalysisResult> AnalyzeAsync(DocumentSet set)
     {
+        if (set.Documents == null || set.Documents.Count == 0)
+            return new RagAnalysisResult(new List<LinkedPassage>(), new List<EntityGraph>());
+
         var chunks = set.Documents.SelectMany(d => d.Chunks).ToList();
         var links = await _linker.LinkAsync(chunks);
 

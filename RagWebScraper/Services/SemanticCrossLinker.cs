@@ -14,7 +14,9 @@ namespace RagWebScraper.Services
 
         public async Task<IEnumerable<LinkedPassage>> LinkAsync(IEnumerable<DocumentChunk> chunks)
         {
-            var chunkList = chunks.ToList();
+            var chunkList = chunks?.ToList() ?? new List<DocumentChunk>();
+            if (chunkList.Count < 2)
+                return Enumerable.Empty<LinkedPassage>();
             Console.WriteLine($"[Linker] Chunks to embed: {chunkList.Count}");
 
             var embeddings = await _embedding.GetEmbeddingsAsync(chunkList.Select(c => c.Text)).ConfigureAwait(false);

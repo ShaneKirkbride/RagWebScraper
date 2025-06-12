@@ -67,4 +67,16 @@ public class CombinedCrossDocLinkServiceTests
         Assert.Empty(links);
         Assert.Null(analyzer.ReceivedSet);
     }
+
+    [Fact]
+    public async Task ComputeLinksAsync_ReturnsEmpty_WhenNoDocs()
+    {
+        var analyzer = new StubAnalyzer(new RagAnalysisResult(new List<LinkedPassage>(), []));
+        var service = new CombinedCrossDocLinkService(analyzer, new TextChunker());
+
+        var links = await service.ComputeLinksAsync(new List<AnalysisResult>(), new List<AnalysisResult>());
+
+        Assert.Empty(links);
+        Assert.Null(analyzer.ReceivedSet);
+    }
 }
