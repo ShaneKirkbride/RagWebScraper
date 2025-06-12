@@ -41,4 +41,22 @@ public class DocumentClustererTests
 
         Assert.Null(ex);
     }
+
+    [Fact]
+    public async Task ClusterAsync_HandlesWhitespaceAndLongDocs()
+    {
+        var docs = new[]
+        {
+            new Document(Guid.NewGuid(), string.Empty),
+            new Document(Guid.NewGuid(), "   \t"),
+            new Document(Guid.NewGuid(), "Example text with punctuation!"),
+            new Document(Guid.NewGuid(), new string('x', 500))
+        };
+
+        IDocumentClusterer clusterer = new TfidfKMeansClusterer();
+
+        var ex = await Record.ExceptionAsync(() => clusterer.ClusterAsync(docs, 2));
+
+        Assert.Null(ex);
+    }
 }
