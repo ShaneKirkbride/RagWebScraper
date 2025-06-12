@@ -1,4 +1,5 @@
 using Microsoft.ML;
+using Microsoft.ML.Transforms.Text;
 using System.Linq;
 using RagWebScraper.Models;
 
@@ -29,7 +30,22 @@ namespace RagWebScraper.Services
             var data = documentList.Select(d => new DocumentData { Text = d.Text });
             var dataView = _mlContext.Data.LoadFromEnumerable(data);
 
-            var pipeline = _mlContext.Transforms.Text.FeaturizeText("Features", nameof(DocumentData.Text))
+            var textOptions = new TextFeaturizingEstimator.Options
+            {
+                // Disable char n-grams to avoid varying vector sizes which can
+                // lead to schema mismatches when normalizing.
+                CharFeatureExtractor = null,
+                WordFeatureExtractor = new WordBagEstimator.Options
+                {
+                    NgramLength = 2,
+                    UseAllLengths = true
+                }
+            };
+
+            var pipeline = _mlContext.Transforms.Text.FeaturizeText(
+                    outputColumnName: "Features",
+                    options: textOptions,
+                    inputColumnName: nameof(DocumentData.Text))
                 .Append(_mlContext.Transforms.NormalizeLpNorm("Features"))
                 .AppendCacheCheckpoint(_mlContext)
                 .Append(_mlContext.Clustering.Trainers.KMeans(featureColumnName: "Features", numberOfClusters: numberOfClusters));
