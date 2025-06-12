@@ -26,7 +26,7 @@ public class CombinedCrossDocLinkService
     {
         var docs = new List<AnalyzedDocument>();
 
-        foreach (var res in urlResults)
+        foreach (var res in urlResults ?? Enumerable.Empty<AnalysisResult>())
         {
             var chunks = _chunker.ChunkText(res.RawText)
                 .Select(t => new DocumentChunk(res.Url, t))
@@ -34,7 +34,7 @@ public class CombinedCrossDocLinkService
             docs.Add(new AnalyzedDocument(res.Url, chunks));
         }
 
-        foreach (var res in pdfResults)
+        foreach (var res in pdfResults ?? Enumerable.Empty<AnalysisResult>())
         {
             var chunks = _chunker.ChunkText(res.RawText)
                 .Select(t => new DocumentChunk(res.FileName, t))

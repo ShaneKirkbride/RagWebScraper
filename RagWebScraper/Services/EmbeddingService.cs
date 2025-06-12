@@ -14,6 +14,8 @@ namespace RagWebScraper.Services
 
         public async Task<List<float>> GetEmbeddingAsync(string input)
         {
+            if (string.IsNullOrWhiteSpace(input))
+                return new List<float>();
 
             List<float> embeddingsVectors = new List<float>();
             OpenAIEmbeddingCollection? result = await _client.GenerateEmbeddingsAsync([input]);
@@ -36,8 +38,12 @@ namespace RagWebScraper.Services
 
             return embeddingsVectors;
         }
+
         public async Task<List<float[]>> GetEmbeddingsAsync(IEnumerable<string> inputs)
         {
+            if (inputs == null || !inputs.Any())
+                return new List<float[]>();
+
             OpenAIEmbeddingCollection result = await _client.GenerateEmbeddingsAsync(inputs);
             return result.Select(e => e.ToFloats().ToArray()).ToList();
         }
