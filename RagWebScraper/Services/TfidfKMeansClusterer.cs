@@ -30,22 +30,12 @@ namespace RagWebScraper.Services
             var data = documentList.Select(d => new DocumentData { Text = d.Text });
             var dataView = _mlContext.Data.LoadFromEnumerable(data);
 
-            var textOptions = new TextFeaturizingEstimator.Options
-            {
-                // Disable char n-grams to avoid varying vector sizes which can
-                // lead to schema mismatches when normalizing.
-                CharFeatureExtractor = null,
-                WordFeatureExtractor = new WordBagEstimator.Options
-                {
-                    NgramLength = 2,
-                    UseAllLengths = true
-                }
-            };
-
-            var pipeline = _mlContext.Transforms.Text.FeaturizeText(
+            var pipeline = _mlContext.Transforms.Text.ProduceHashedWordBags(
                     outputColumnName: "Features",
-                    options: textOptions,
-                    inputColumnNames: nameof(DocumentData.Text))
+                    inputColumnName: nameof(DocumentData.Text),
+                    numberOfBits: 16,
+                    ngramLength: 2,
+                    useAllLengths: true)
                 .Append(_mlContext.Transforms.NormalizeLpNorm("Features"))
                 .AppendCacheCheckpoint(_mlContext)
                 .Append(_mlContext.Clustering.Trainers.KMeans(featureColumnName: "Features", numberOfClusters: numberOfClusters));

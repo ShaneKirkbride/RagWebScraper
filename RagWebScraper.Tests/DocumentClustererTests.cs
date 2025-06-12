@@ -1,5 +1,6 @@
 using RagWebScraper.Models;
 using RagWebScraper.Services;
+using System.Linq;
 using Xunit;
 
 namespace RagWebScraper.Tests;
@@ -56,6 +57,19 @@ public class DocumentClustererTests
         IDocumentClusterer clusterer = new TfidfKMeansClusterer();
 
         var ex = await Record.ExceptionAsync(() => clusterer.ClusterAsync(docs, 2));
+
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public async Task ClusterAsync_WorksWithLargeVocabulary()
+    {
+        var docs = Enumerable.Range(0, 100)
+            .Select(i => new Document(Guid.NewGuid(), $"word{i} unique{i}")).ToArray();
+
+        IDocumentClusterer clusterer = new TfidfKMeansClusterer();
+
+        var ex = await Record.ExceptionAsync(() => clusterer.ClusterAsync(docs, 5));
 
         Assert.Null(ex);
     }
