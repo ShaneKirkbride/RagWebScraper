@@ -10,9 +10,16 @@
 
 <h3 class="mb-3 text-primary">Cross-Document Links</h3>
 
-@if (!AppState.AllCrossDocLinks.Any() &&
-    !AppState.PdfCrossDocLinks.Any() &&
-    !AppState.UrlCrossDocLinks.Any())
+@if (_isLoading)
+{
+    <p>
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        Generating links...
+    </p>
+}
+else if (!AppState.AllCrossDocLinks.Any() &&
+         !AppState.PdfCrossDocLinks.Any() &&
+         !AppState.UrlCrossDocLinks.Any())
 {
     <p>No cross-document links available. Please analyze some documents first.</p>
 }
@@ -38,10 +45,19 @@ else
 }
 
 @code {
-    protected override async Task OnInitializedAsync()
+    private bool _isLoading = true;
+
+    protected override void OnInitialized()
     {
         AppState.OnChange += StateHasChanged;
-        await GenerateLinksAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await GenerateLinksAsync();
+        }
     }
 
     private async Task GenerateLinksAsync()
@@ -50,7 +66,7 @@ else
             AppState.UrlAnalysisResults,
             AppState.PdfAnalysisResults);
         AppState.SetAllCrossDocLinks(links);
-
+        _isLoading = false;
         StateHasChanged();
     }
 
