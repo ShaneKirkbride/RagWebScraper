@@ -4,6 +4,7 @@
 @inject AppStateService AppState
 @inject IRagAnalyzerService RagAnalyzer
 @inject TextChunker Chunker
+@inject CombinedCrossDocLinkService CombinedLinkService
 @inject KeywordSentimentSummaryService SummaryService
 
 @implements IDisposable
@@ -183,15 +184,23 @@
                         uploadStatus = "All PDF analyses complete.";
                     }
 
+
                     if (results.Count > 1)
                     {
                         var docs = results.Select(r => new AnalyzedDocument(
                             r.FileName,
-                            Chunker.ChunkText(r.RawText).Select(t => new DocumentChunk(r.FileName, t)).ToList())).ToList();
+                            Chunker.ChunkText(r.RawText)
+                                .Select(t => new DocumentChunk(r.FileName, t))
+                                .ToList())).ToList();
                         var set = new DocumentSet(docs);
                         var analysis = await RagAnalyzer.AnalyzeAsync(set);
                         AppState.SetPdfCrossDocLinks(analysis.Links.ToList());
                     }
+
+                    var combined = await CombinedLinkService.ComputeLinksAsync(
+                        AppState.UrlAnalysisResults,
+                        results);
+                    AppState.SetAllCrossDocLinks(combined);
 
                     _pollingTimer?.Stop();
                     _pollingTimer?.Dispose();

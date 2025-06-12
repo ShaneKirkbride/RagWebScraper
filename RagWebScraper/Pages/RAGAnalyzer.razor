@@ -5,6 +5,7 @@
 @inject AppStateService AppState
 @inject IRagAnalyzerService RagAnalyzer
 @inject TextChunker Chunker
+@inject CombinedCrossDocLinkService CombinedLinkService
 
 @implements IDisposable
 @using RagWebScraper.Models
@@ -118,11 +119,18 @@
         {
             var docs = result.Select(r => new AnalyzedDocument(
                 r.Url,
-                Chunker.ChunkText(r.RawText).Select(t => new DocumentChunk(r.Url, t)).ToList())).ToList();
+                Chunker.ChunkText(r.RawText)
+                    .Select(t => new DocumentChunk(r.Url, t))
+                    .ToList())).ToList();
             var set = new DocumentSet(docs);
             var analysis = await RagAnalyzer.AnalyzeAsync(set);
             AppState.SetUrlCrossDocLinks(analysis.Links.ToList());
         }
+
+        var combined = await CombinedLinkService.ComputeLinksAsync(
+            result,
+            AppState.PdfAnalysisResults);
+        AppState.SetAllCrossDocLinks(combined);
 
         // Generate and store summary
         var summary = await SummaryService.GenerateSummaryAsync(result);
