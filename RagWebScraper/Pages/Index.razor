@@ -1,13 +1,73 @@
-﻿@page "/"
+@page "/"
 
 <h1 class="display-4 text-primary">Welcome to RAG Web Scraper</h1>
 
 <p class="lead">
-    Use the Analyze tool to scrape pages and assess sentiment and keywords.
+    Use the tools below to analyze content, query stored knowledge and explore relationships.
 </p>
 
-<a class="btn btn-success me-2" href="/analyze">Analyze URL</a>
-<a class="btn btn-success me-2" href="/upload-pdf">Analyze PDF</a>
-<a class="btn btn-success me-2" href="/query">Query RAG</a>
-<a class="btn btn-success me-2" href="/pdf-scraper">Scrape PDFs</a>
-<a class="btn btn-primary me-2" href="/knowledge-graph">Knowledge Graph</a>
+<div class="row row-cols-1 row-cols-md-3 g-4 mt-3">
+    <div class="col">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-body">
+                <span class="display-6">🧪</span>
+                <h5 class="card-title mt-2">Analyze</h5>
+                <NavLink class="btn btn-primary" href="/analyze">Go</NavLink>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-body">
+                <span class="display-6">📄</span>
+                <h5 class="card-title mt-2">Upload PDF</h5>
+                <NavLink class="btn btn-primary" href="/upload-pdf">Go</NavLink>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-body">
+                <span class="display-6">❓</span>
+                <h5 class="card-title mt-2">Query RAG</h5>
+                <NavLink class="btn btn-primary" href="/query">Go</NavLink>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-body">
+                <span class="display-6">📑</span>
+                <h5 class="card-title mt-2">PDF Scraper</h5>
+                <NavLink class="btn btn-primary" href="/pdf-scraper">Go</NavLink>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-body">
+                <span class="display-6">📊</span>
+                <h5 class="card-title mt-2">Knowledge Graph</h5>
+                <NavLink class="btn btn-primary" href="/knowledge-graph">Go</NavLink>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-body">
+                <span class="display-6">💫</span>
+                <h5 class="card-title mt-2">Cross Links</h5>
+                <NavLink class="btn btn-primary" href="/cross-links">Go</NavLink>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow-sm h-100 text-center">
+            <div class="card-body">
+                <span class="display-6">📈</span>
+                <h5 class="card-title mt-2">Clustering</h5>
+                <NavLink class="btn btn-primary" href="/cluster">Go</NavLink>
+            </div>
+        </div>
+    </div>
+</div>
