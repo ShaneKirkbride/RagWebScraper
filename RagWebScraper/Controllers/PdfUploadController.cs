@@ -7,6 +7,9 @@ using static RagWebScraper.Pages.KnowledgeGraph;
 
 [ApiController]
 [Route("api/pdf")]
+/// <summary>
+/// API controller that processes PDF uploads and enqueues analysis tasks.
+/// </summary>
 public class PdfUploadController : ControllerBase
 {
     private readonly ITextExtractor _extractor;
@@ -19,6 +22,9 @@ public class PdfUploadController : ControllerBase
     private readonly IChunkIngestorService _chunkIngestor;
     private readonly IPdfProcessingQueue _queue;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PdfUploadController"/> class.
+    /// </summary>
     public PdfUploadController(
         ITextExtractor extractor,
         ISentimentAnalyzer sentiment,
@@ -41,10 +47,16 @@ public class PdfUploadController : ControllerBase
         _queue = queue;
     }
 
+    /// <summary>
+    /// Endpoint to enqueue PDFs for asynchronous analysis.
+    /// </summary>
     [HttpPost("analyze")]
     public Task<IActionResult> AnalyzePdf([FromForm] IFormFileCollection files, [FromForm] string keywords) =>
         AnalyzePdfInternal(files, keywords);
 
+    /// <summary>
+    /// Performs the actual PDF processing logic and enqueues background jobs.
+    /// </summary>
     private async Task<IActionResult> AnalyzePdfInternal(IFormFileCollection files, string keywords)
     {
         if (files == null || files.Count == 0)
