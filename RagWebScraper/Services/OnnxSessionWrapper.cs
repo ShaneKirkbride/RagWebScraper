@@ -11,8 +11,8 @@ public class OnnxSessionWrapper : IOnnxSession
         _session = new InferenceSession(modelPath);
     }
 
-    public IDisposableReadOnlyCollection<DisposableNamedOnnxValue> Run(IEnumerable<NamedOnnxValue> inputs)
-        => _session.Run(inputs.ToList());
+    public IDisposableReadOnlyCollection<NamedOnnxValue> Run(IEnumerable<NamedOnnxValue> inputs)
+        => (IDisposableReadOnlyCollection<NamedOnnxValue>)_session.Run(inputs.ToList());
 
     public void Dispose() => _session.Dispose();
 }
