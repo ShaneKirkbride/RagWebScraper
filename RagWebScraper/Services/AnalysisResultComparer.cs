@@ -4,8 +4,14 @@
     using System.Collections.Generic;
     using RagWebScraper.Models;
 
+    /// <summary>
+    /// Provides equality comparison for <see cref="AnalysisResult"/> objects.
+    /// </summary>
     public class AnalysisResultComparer : IEqualityComparer<AnalysisResult>
     {
+        /// <summary>
+        /// Determines if two analysis results are equal.
+        /// </summary>
         public bool Equals(AnalysisResult? x, AnalysisResult? y)
         {
             if (ReferenceEquals(x, y))
@@ -21,6 +27,11 @@
                    string.Equals(x.KeywordSummary, y.KeywordSummary, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Computes a hash code for the given analysis result.
+        /// </summary>
+        /// <param name="obj">The result to compute a hash for.</param>
+        /// <returns>The calculated hash code.</returns>
         public int GetHashCode(AnalysisResult obj)
         {
             if (obj is null)
@@ -34,6 +45,9 @@
             return hash;
         }
 
+        /// <summary>
+        /// Compares two dictionaries for equality.
+        /// </summary>
         private bool DictionaryEquals<TKey, TValue>(
             IDictionary<TKey, TValue>? dict1,
             IDictionary<TKey, TValue>? dict2)
@@ -54,6 +68,9 @@
             return true;
         }
 
+        /// <summary>
+        /// Generates a hash code for a dictionary instance.
+        /// </summary>
         private int GetDictionaryHashCode<TKey, TValue>(IDictionary<TKey, TValue>? dictionary)
         {
             if (dictionary is null)

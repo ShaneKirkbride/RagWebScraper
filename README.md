@@ -69,6 +69,12 @@ dotnet test
 
 ---
 
+## Documentation
+
+All major services and controllers include XML documentation comments. IntelliSense in IDEs will display usage help automatically.
+
+---
+
 ## Usage
 
 ### Ingest URLs

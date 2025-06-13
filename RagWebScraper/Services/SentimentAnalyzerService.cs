@@ -4,6 +4,9 @@ using Microsoft.ML.Tokenizers;
 
 namespace RagWebScraper.Services
 {
+    /// <summary>
+    /// Performs local sentiment analysis using an ONNX model and tokenizer.
+    /// </summary>
     public class SentimentAnalyzerService : ISentimentAnalyzer
     {
         private readonly MLContext _mlContext;
@@ -11,6 +14,10 @@ namespace RagWebScraper.Services
         private readonly BertTokenizer _tokenizer;
         private readonly int _maxSequenceLength = 128;
 
+        /// <summary>
+        /// Creates a new instance configured with model paths specified in the provided configuration.
+        /// </summary>
+        /// <param name="config">Application configuration containing model paths.</param>
         public SentimentAnalyzerService(IConfiguration config)
         {
             _mlContext = new MLContext();
@@ -55,6 +62,11 @@ namespace RagWebScraper.Services
             _predictionEngine = _mlContext.Model.CreatePredictionEngine<SentimentInput, SentimentOutput>(model);
         }
 
+        /// <summary>
+        /// Computes a sentiment score for the supplied text.
+        /// </summary>
+        /// <param name="text">Text to analyze.</param>
+        /// <returns>A calibrated sentiment score.</returns>
         public float AnalyzeSentiment(string text)
         {
             string? normalizedText;
@@ -101,6 +113,12 @@ namespace RagWebScraper.Services
             return list.Select(i => (long)i).ToArray();
         }
 
+        /// <summary>
+        /// Calculates average sentiment for each keyword's surrounding context.
+        /// </summary>
+        /// <param name="text">Full text to scan.</param>
+        /// <param name="keywords">Keywords to extract sentiment for.</param>
+        /// <returns>Dictionary mapping keywords to average sentiment scores.</returns>
         public Dictionary<string, float> ExtractKeywordSentiments(string text, List<string> keywords)
         {
             var results = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
