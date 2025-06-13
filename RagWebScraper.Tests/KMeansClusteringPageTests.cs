@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Rendering;
 using System.IO;
 using System.Threading.Tasks;
 using RagWebScraper.Models;
@@ -145,5 +146,19 @@ public class KMeansClusteringPageTests
 
         Assert.Null(GetPrivateField(page, "clusterResults"));
         Assert.Equal("too few", GetPrivateField(page, "errorMessage"));
+    }
+
+    [Fact]
+    public void BuildRenderTree_IgnoresMissingLabels()
+    {
+        var page = new RagWebScraper.Pages.KMeansClustering();
+        var results = new Dictionary<Guid, int> { [Guid.NewGuid()] = 0 };
+        SetPrivateField(page, "clusterResults", results);
+        var builder = new RenderTreeBuilder();
+        var method = page.GetType().GetMethod("BuildRenderTree", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        var ex = Record.Exception(() => method.Invoke(page, new object[] { builder }));
+
+        Assert.Null(ex);
     }
 }
