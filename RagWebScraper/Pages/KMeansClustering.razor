@@ -60,7 +60,7 @@
             <ul>
                 @foreach (var doc in group)
                 {
-                    <li>@docLabels[doc.Key]</li>
+                    <li>@(docLabels.TryGetValue(doc.Key, out var label) ? label : doc.Key.ToString())</li>
                 }
             </ul>
         </div>
