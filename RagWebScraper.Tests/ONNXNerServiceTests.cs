@@ -21,28 +21,24 @@ public class ONNXNerServiceTests
         }
     }
 
-    private class StubDisposableCollection : List<DisposableNamedOnnxValue>, IDisposableReadOnlyCollection<DisposableNamedOnnxValue>
+    private class StubDisposableCollection : List<NamedOnnxValue>, IDisposableReadOnlyCollection<NamedOnnxValue>
     {
-        public StubDisposableCollection(IEnumerable<DisposableNamedOnnxValue> values) : base(values) { }
-        public void Dispose()
-        {
-            foreach (var v in this)
-                v.Dispose();
-        }
+        public StubDisposableCollection(IEnumerable<NamedOnnxValue> values) : base(values) { }
+        public void Dispose() { }
     }
 
     private class StubSession : IOnnxSession
     {
-        public int LastLength { get; private set; }
+        public List<int> RunLengths { get; } = new();
 
-        public IDisposableReadOnlyCollection<DisposableNamedOnnxValue> Run(IEnumerable<NamedOnnxValue> inputs)
+        public IDisposableReadOnlyCollection<NamedOnnxValue> Run(IEnumerable<NamedOnnxValue> inputs)
         {
             var tensor = inputs.First(v => v.Name == "input_ids").AsTensor<long>();
-            LastLength = tensor.Length;
-            int tokenCount = tensor.Length;
+            RunLengths.Add((int)tensor.Length);
+            int tokenCount = (int)tensor.Length;
             int labelCount = 9;
             var data = new DenseTensor<float>(new float[tokenCount * labelCount], new[] { 1, tokenCount, labelCount });
-            var value = DisposableNamedOnnxValue.CreateFromTensor("logits", data);
+            var value = NamedOnnxValue.CreateFromTensor("logits", data);
             return new StubDisposableCollection(new[] { value });
         }
 
@@ -50,14 +46,14 @@ public class ONNXNerServiceTests
     }
 
     [Fact]
-    public void RecognizeTokensWithLabels_TruncatesLongInput()
+    public void RecognizeTokensWithLabels_UsesWindowsForLongInput()
     {
         var session = new StubSession();
         var service = new ONNXNerService(new StubTokenizer(), session);
         var result = service.RecognizeTokensWithLabels("x");
 
-        Assert.Equal(512, result.Count);
-        Assert.Equal(512, session.LastLength);
+        Assert.Equal(520, result.Count);
+        Assert.Equal(new[] { 512, 8 }, session.RunLengths);
     }
 }
 

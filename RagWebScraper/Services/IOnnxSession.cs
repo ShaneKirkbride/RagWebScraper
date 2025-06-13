@@ -12,5 +12,5 @@ public interface IOnnxSession : IDisposable
     /// </summary>
     /// <param name="inputs">Input tensors for the model.</param>
     /// <returns>The model outputs.</returns>
-    IDisposableReadOnlyCollection<DisposableNamedOnnxValue> Run(IEnumerable<NamedOnnxValue> inputs);
+    IDisposableReadOnlyCollection<NamedOnnxValue> Run(IEnumerable<NamedOnnxValue> inputs);
 }
