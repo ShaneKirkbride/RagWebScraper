@@ -15,6 +15,8 @@ public class ONNXNerService : INerService
         "O", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC", "B-MISC", "I-MISC"
     };
 
+    private const int MaxTokens = 512;
+
     public ONNXNerService(string modelPath, string vocabPath, string mergesPath, string dictionaryPath)
     {
         var tokenizer = EnglishRobertaTokenizer.Create(vocabPath, mergesPath, dictionaryPath);
@@ -32,7 +34,9 @@ public class ONNXNerService : INerService
     {
         var (encodingIds, encodingTokens) = _tokenizer.Encode(text);
 
-        long[] inputIds = encodingIds.Select(id => (long)id).ToArray();
+        int length = Math.Min(MaxTokens, encodingIds.Count);
+        long[] inputIds = encodingIds.Take(length).Select(id => (long)id).ToArray();
+        var tokens = encodingTokens.Take(length).ToList();
         long[] attentionMask = Enumerable.Repeat(1L, inputIds.Length).ToArray();
 
         var inputIdsTensor = new DenseTensor<long>(inputIds, new[] { 1, inputIds.Length });
@@ -58,7 +62,7 @@ public class ONNXNerService : INerService
             var tokenLogits = logits.Skip(offset).Take(labelCount).ToArray();
             int predictedIdx = Array.IndexOf(tokenLogits, tokenLogits.Max());
 
-            var token = Detokenize(encodingTokens[i]);
+            var token = Detokenize(tokens[i]);
             var label = _labels[predictedIdx];
 
             tokenLabels.Add((token, label));
@@ -71,7 +75,9 @@ public class ONNXNerService : INerService
     {
         var (encodingIds, encodingTokens) = _tokenizer.Encode(text);
 
-        long[] inputIds = encodingIds.Select(id => (long)id).ToArray();
+        int length = Math.Min(MaxTokens, encodingIds.Count);
+        long[] inputIds = encodingIds.Take(length).Select(id => (long)id).ToArray();
+        var tokens = encodingTokens.Take(length).ToList();
         long[] attentionMask = Enumerable.Repeat(1L, inputIds.Length).ToArray();
 
         var inputIdsTensor = new DenseTensor<long>(inputIds, new[] { 1, inputIds.Length });
@@ -103,9 +109,9 @@ public class ONNXNerService : INerService
         string? currentLabel = null;
         int entityStart = 0;
 
-        for (int i = 0; i < encodingTokens.Count; i++)
+        for (int i = 0; i < tokens.Count; i++)
         {
-            var token = Detokenize(encodingTokens[i]);
+            var token = Detokenize(tokens[i]);
             var label = _labels[labelIds[i]];
 
             if (label.StartsWith("B-"))
@@ -135,7 +141,7 @@ public class ONNXNerService : INerService
 
         if (!string.IsNullOrEmpty(currentEntity))
         {
-            entities.Add(new NamedEntity { Text = currentEntity, Label = currentLabel, Start = entityStart, End = encodingTokens.Count });
+            entities.Add(new NamedEntity { Text = currentEntity, Label = currentLabel, Start = entityStart, End = tokens.Count });
         }
 
         return entities;
