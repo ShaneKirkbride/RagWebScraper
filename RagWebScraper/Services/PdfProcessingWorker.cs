@@ -1,6 +1,7 @@
 ﻿namespace RagWebScraper.Services;
 
 using RagWebScraper.Models;
+using System.IO;
 
 public class PdfProcessingWorker : ChannelBackgroundWorker<PdfProcessingRequest>
 {
@@ -34,7 +35,8 @@ public class PdfProcessingWorker : ChannelBackgroundWorker<PdfProcessingRequest>
 
     protected override async Task ProcessRequestAsync(PdfProcessingRequest request, CancellationToken stoppingToken)
     {
-        var text = await _extractor.ExtractTextAsync(request.FileStream);
+        await using var stream = new FileStream(request.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var text = await _extractor.ExtractTextAsync(stream);
         var sentences = SentenceSplitter.Split(text);
 
         var sentiment = _sentiment.AnalyzeSentiment(text);
@@ -58,6 +60,16 @@ public class PdfProcessingWorker : ChannelBackgroundWorker<PdfProcessingRequest>
         });
 
         _logger.LogInformation("Processed {FileName}", request.FileName);
+
+        try
+        {
+            if (File.Exists(request.FilePath))
+                File.Delete(request.FilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete temp file {FilePath}", request.FilePath);
+        }
     }
 
 }
