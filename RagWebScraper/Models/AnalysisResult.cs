@@ -14,6 +14,6 @@ public class AnalysisResult
     public Dictionary<string, float> KeywordSentimentScores { get; set; } = new();
     public IEnumerable<LinkedPassage> Links { get; set; }
     public string KeywordSummary { get; set; }
-    public string RawText { get; internal set; }
+    public string RawText { get; set; }
     public List<string>? RawSentences { get; set; }
 }
