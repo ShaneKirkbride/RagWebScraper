@@ -1,4 +1,7 @@
 using Microsoft.ML.OnnxRuntime;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RagWebScraper.Services;
 
@@ -12,7 +15,30 @@ public class OnnxSessionWrapper : IOnnxSession
     }
 
     public IDisposableReadOnlyCollection<NamedOnnxValue> Run(IEnumerable<NamedOnnxValue> inputs)
-        => (IDisposableReadOnlyCollection<NamedOnnxValue>)_session.Run(inputs.ToList());
+    {
+        var results = _session.Run(inputs.ToList());
+        return new NamedOnnxValueCollection(results);
+    }
+
+    private sealed class NamedOnnxValueCollection : IDisposableReadOnlyCollection<NamedOnnxValue>
+    {
+        private readonly IDisposableReadOnlyCollection<DisposableNamedOnnxValue> _inner;
+
+        public NamedOnnxValueCollection(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> inner)
+        {
+            _inner = inner;
+        }
+
+        public int Count => _inner.Count;
+
+        public NamedOnnxValue this[int index] => _inner[index];
+
+        public IEnumerator<NamedOnnxValue> GetEnumerator() => _inner.Cast<NamedOnnxValue>().GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public void Dispose() => _inner.Dispose();
+    }
 
     public void Dispose() => _session.Dispose();
 }
