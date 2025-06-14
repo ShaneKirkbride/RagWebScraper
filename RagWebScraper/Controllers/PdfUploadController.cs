@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
 using static RagWebScraper.Pages.UploadPdf;
@@ -70,14 +71,16 @@ public class PdfUploadController : ControllerBase
             if (!file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            var memoryStream = new MemoryStream();
-            await file.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
+            var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}");
+            await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
+            {
+                await file.CopyToAsync(fs);
+            }
 
             _queue.Enqueue(new PdfProcessingRequest
             {
                 FileName = file.FileName,
-                FileStream = memoryStream,
+                FilePath = tempPath,
                 Keywords = keywordList
             });
         }
