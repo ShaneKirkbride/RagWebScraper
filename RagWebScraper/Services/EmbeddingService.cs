@@ -1,5 +1,9 @@
 ﻿using OpenAI.Embeddings;
+using Polly;
+using Polly.Retry;
 using System.Linq;
+using System.Net;
+using System.ClientModel;
 
 namespace RagWebScraper.Services
 {
@@ -9,6 +13,7 @@ namespace RagWebScraper.Services
     public class EmbeddingService : IEmbeddingService
     {
         private readonly EmbeddingClient _client;
+        private readonly AsyncRetryPolicy<ClientResult<OpenAIEmbeddingCollection>> _retryPolicy;
 
         /// <summary>
         /// Initializes the service with the specified OpenAI API key.
@@ -17,6 +22,16 @@ namespace RagWebScraper.Services
         public EmbeddingService(string openAiKey)
         {
             _client = new EmbeddingClient("text-embedding-3-small", openAiKey);
+            _retryPolicy = Policy<ClientResult<OpenAIEmbeddingCollection>>
+                .Handle<ClientResultException>(ex => ex.Status == (int)HttpStatusCode.TooManyRequests)
+                .Or<HttpRequestException>(ex => ex.StatusCode == HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
+                    onRetry: (ex, timespan, attempt, context) =>
+                    {
+                        Console.WriteLine($"[Retry {attempt}] Rate limit hit. Waiting {timespan} before next try.");
+                    });
         }
 
         /// <summary>
@@ -30,9 +45,10 @@ namespace RagWebScraper.Services
                 return new List<float>();
 
             List<float> embeddingsVectors = new List<float>();
-            OpenAIEmbeddingCollection? result = await _client.GenerateEmbeddingsAsync([input]);
+            ClientResult<OpenAIEmbeddingCollection> result = await _retryPolicy.ExecuteAsync(() => _client.GenerateEmbeddingsAsync([input]));
+            OpenAIEmbeddingCollection collection = result.Value;
 
-            foreach (OpenAIEmbedding embedding in result)
+            foreach (OpenAIEmbedding embedding in collection)
             {
                 ReadOnlyMemory<float> vector = embedding.ToFloats();
 
@@ -61,8 +77,9 @@ namespace RagWebScraper.Services
             if (inputs == null || !inputs.Any())
                 return new List<float[]>();
 
-            OpenAIEmbeddingCollection result = await _client.GenerateEmbeddingsAsync(inputs);
-            return result.Select(e => e.ToFloats().ToArray()).ToList();
+            ClientResult<OpenAIEmbeddingCollection> resultMulti = await _retryPolicy.ExecuteAsync(() => _client.GenerateEmbeddingsAsync(inputs));
+            OpenAIEmbeddingCollection collectionMulti = resultMulti.Value;
+            return collectionMulti.Select(e => e.ToFloats().ToArray()).ToList();
         }
     }
 }
