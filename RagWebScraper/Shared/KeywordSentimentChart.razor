@@ -1,22 +1,49 @@
 ﻿@using RagWebScraper.Models
 @using Blazorise.Charts
+@using System.Text
+@inject ICsvExportService CsvExporter
+@inject IJSRuntime JS
 
-@if (Results == null || !Results.Any())
+@if (Display)
 {
-    <div class="alert alert-info">No keyword sentiment data available.</div>
-}
-else
-{
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-success text-white">Keyword-Level Sentiment (Aggregated per Keyword)</div>
-        <div class="card-body">
-            <BarChart @ref="keywordChart" TItem="double" Datasets="@(new[] { keywordDataset })" />
+    if (Results == null || !Results.Any())
+    {
+        <div class="alert alert-info">No keyword sentiment data available.</div>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between">
+                <span>Keyword-Level Sentiment (Aggregated per Keyword)</span>
+                @if (AllowDownload)
+                {
+                    <button class="btn btn-sm btn-light" @onclick="DownloadAsync">
+                        <i class="bi bi-download"></i> CSV
+                    </button>
+                }
+            </div>
+            <div class="card-body">
+                <BarChart @ref="keywordChart" TItem="double" Datasets="@(new[] { keywordDataset })" />
+            </div>
         </div>
-    </div>
+    }
 }
 
 @code {
     [Parameter] public List<AnalysisResult> Results { get; set; }
+    [Parameter] public bool Display { get; set; } = true;
+    [Parameter] public bool AllowDownload { get; set; } = true;
+
+    private async Task DownloadAsync()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for keyword sentiment CSV", "keyword_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "keyword_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportKeywordSentiment(Results);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
 
     private BarChart<double> keywordChart;
     private BarChartDataset<double> keywordDataset = new()

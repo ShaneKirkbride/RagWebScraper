@@ -1,23 +1,50 @@
 ﻿@using Blazorise.Charts
+@using RagWebScraper.Models
+@using System.Text
+@inject ICsvExportService CsvExporter
+@inject IJSRuntime JS
 
-@if (Frequencies == null || !Frequencies.Any())
+@if (Display)
 {
-    <div class="alert alert-warning">No keywords found.</div>
-}
-else
-{
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-success text-white">
-            Keyword Frequencies
+    if (Frequencies == null || !Frequencies.Any())
+    {
+        <div class="alert alert-warning">No keywords found.</div>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between">
+                <span>Keyword Frequencies</span>
+                @if (AllowDownload)
+                {
+                    <button class="btn btn-sm btn-light" @onclick="DownloadAsync">
+                        <i class="bi bi-download"></i> CSV
+                    </button>
+                }
+            </div>
+            <div class="card-body">
+                <BarChart @ref="keywordChart" TItem="int" Datasets="@(new[] { keywordData })" />
+            </div>
         </div>
-        <div class="card-body">
-            <BarChart @ref="keywordChart" TItem="int" Datasets="@(new[] { keywordData })" />
-        </div>
-    </div>
+    }
 }
 
 @code {
     [Parameter] public Dictionary<string, int> Frequencies { get; set; }
+    [Parameter] public bool Display { get; set; } = true;
+    [Parameter] public bool AllowDownload { get; set; } = true;
+
+    private async Task DownloadAsync()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for keyword frequency CSV", "keyword_frequencies");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "keyword_frequencies";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportKeywordFrequencies(
+            new[] { new AnalysisResult(Enumerable.Empty<LinkedPassage>()) { KeywordFrequencies = Frequencies ?? new() } });
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
 
     private BarChart<int> keywordChart;
     private BarChartDataset<int> keywordData = new()

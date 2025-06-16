@@ -54,6 +54,7 @@ builder.Services.AddSingleton<ITextExtractor, PdfTextExtractorService>();
 builder.Services.AddSingleton<TextChunker>();
 builder.Services.AddSingleton<IEmbeddingService>(new EmbeddingService(openAiKey));
 builder.Services.AddSingleton<IChunkIngestorService, ChunkIngestorService>();
+builder.Services.AddSingleton<ICsvExportService, CsvExportService>();
 builder.Services.AddSingleton<IPdfProcessingQueue, PdfProcessingQueue>();
 builder.Services.AddHostedService<PdfProcessingWorker>();
 builder.Services.AddSingleton<IRagAnalysisQueue, RagAnalysisQueue>();

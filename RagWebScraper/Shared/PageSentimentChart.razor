@@ -1,22 +1,49 @@
 ﻿@using RagWebScraper.Models
 @using Blazorise.Charts
+@using System.Text
+@inject ICsvExportService CsvExporter
+@inject IJSRuntime JS
 
-@if (Results == null || !Results.Any())
+@if (Display)
 {
-    <div class="alert alert-info">No page sentiment data available.</div>
-}
-else
-{
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">Page-Level Sentiment</div>
-        <div class="card-body">
-            <BarChart @ref="pageChart" TItem="float" Datasets="@(new[] { pageDataset })" />
+    if (Results == null || !Results.Any())
+    {
+        <div class="alert alert-info">No page sentiment data available.</div>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between">
+                <span>Page-Level Sentiment</span>
+                @if (AllowDownload)
+                {
+                    <button class="btn btn-sm btn-light" @onclick="DownloadAsync">
+                        <i class="bi bi-download"></i> CSV
+                    </button>
+                }
+            </div>
+            <div class="card-body">
+                <BarChart @ref="pageChart" TItem="float" Datasets="@(new[] { pageDataset })" />
+            </div>
         </div>
-    </div>
+    }
 }
 
 @code {
     [Parameter] public List<AnalysisResult> Results { get; set; }
+    [Parameter] public bool Display { get; set; } = true;
+    [Parameter] public bool AllowDownload { get; set; } = true;
+
+    private async Task DownloadAsync()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for sentiment CSV", "page_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "page_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportPageSentiment(Results);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
 
     private BarChart<float> pageChart;
     private BarChartDataset<float> pageDataset = new()
