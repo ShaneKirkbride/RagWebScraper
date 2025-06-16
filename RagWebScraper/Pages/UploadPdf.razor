@@ -6,6 +6,9 @@
 @inject TextChunker Chunker
 @inject CombinedCrossDocLinkService CombinedLinkService
 @inject KeywordSentimentSummaryService SummaryService
+@inject ICsvExportService CsvExporter
+@inject IJSRuntime JS
+@using System.Text
 
 @implements IDisposable
 @using System.Timers
@@ -35,11 +38,28 @@
 @if (AppState.PdfAnalysisResults?.Any() == true)
 {
     <h3 class="text-success">PDF Analysis Results</h3>
+    <div class="mb-2">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="togglePdfSentiment" @bind="showSentiment" />
+            <label class="form-check-label" for="togglePdfSentiment">Show Sentiment Chart</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="togglePdfKeyword" @bind="showKeyword" />
+            <label class="form-check-label" for="togglePdfKeyword">Show Keyword Chart</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="togglePdfLinks" @bind="showLinks" />
+            <label class="form-check-label" for="togglePdfLinks">Show Cross Links</label>
+        </div>
+        <button class="btn btn-sm btn-secondary ms-3" @onclick="DownloadPageSentimentCsv">Download Sentiment CSV</button>
+        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadKeywordCsv">Download Keyword CSV</button>
+        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadLinksCsv">Download Links CSV</button>
+    </div>
     <div class="col-md-6">
         @if (AppState.PdfCrossDocLinks?.Any() == true)
         {
             <h3 class="text-primary">Cross-Document Semantic Links</h3>
-            <CrossDocLinks Links="AppState.PdfCrossDocLinks" />
+            <CrossDocLinks Links="AppState.PdfCrossDocLinks" Display="showLinks" />
         }
     </div>
     <div class="col-md-6">
@@ -53,10 +73,10 @@
     </div>
     <div class="row mb-4">
         <div class="col-md-6">
-            <PageSentimentChart Results="AppState.PdfAnalysisResults" />
+            <PageSentimentChart Results="AppState.PdfAnalysisResults" Display="showSentiment" />
         </div>
         <div class="col-md-6">
-            <KeywordSentimentChart Results="AppState.PdfAnalysisResults" />
+            <KeywordSentimentChart Results="AppState.PdfAnalysisResults" Display="showKeyword" />
         </div>
     </div>
 
@@ -104,6 +124,9 @@
 @code {
     private string? uploadStatus;
     private string searchTerms = string.Empty;
+    private bool showSentiment = true;
+    private bool showKeyword = true;
+    private bool showLinks = true;
 
     private Timer? _pollingTimer;
     private List<string> uploadedFileNames = new();
@@ -216,6 +239,39 @@
             uploadStatus = $"Error retrieving results: {ex.Message}";
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task DownloadPageSentimentCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for sentiment CSV", "page_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "page_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportPageSentiment(AppState.PdfAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    private async Task DownloadKeywordCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for keyword sentiment CSV", "keyword_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "keyword_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportKeywordSentiment(AppState.PdfAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    private async Task DownloadLinksCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for cross links CSV", "cross_links");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "cross_links";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportCrossLinks(AppState.PdfCrossDocLinks);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
     }
 
     protected override void OnInitialized()

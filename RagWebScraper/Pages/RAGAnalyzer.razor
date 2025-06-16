@@ -6,6 +6,9 @@
 @inject IRagAnalyzerService RagAnalyzer
 @inject TextChunker Chunker
 @inject CombinedCrossDocLinkService CombinedLinkService
+@using System.Text
+@inject ICsvExportService CsvExporter
+@inject IJSRuntime JS
 
 @implements IDisposable
 @using RagWebScraper.Models
@@ -35,6 +38,23 @@
 @if (AppState.UrlAnalysisResults != null && AppState.UrlAnalysisResults.Any())
 {
     <h3 class="text-success">Analysis Results</h3>
+    <div class="mb-2">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="toggleSentiment" @bind="showSentiment" />
+            <label class="form-check-label" for="toggleSentiment">Show Sentiment Chart</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="toggleKeyword" @bind="showKeyword" />
+            <label class="form-check-label" for="toggleKeyword">Show Keyword Chart</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="toggleLinks" @bind="showLinks" />
+            <label class="form-check-label" for="toggleLinks">Show Cross Links</label>
+        </div>
+        <button class="btn btn-sm btn-secondary ms-3" @onclick="DownloadPageSentimentCsv">Download Sentiment CSV</button>
+        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadKeywordCsv">Download Keyword CSV</button>
+        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadLinksCsv">Download Links CSV</button>
+    </div>
     <div class="col-md-6">
         @if (!string.IsNullOrWhiteSpace(AppState.UrlKeywordSummary))
         {
@@ -46,17 +66,17 @@
     </div>
     <div class="row mb-4">
         <div class="col-md-6">
-            <PageSentimentChart Results="AppState.UrlAnalysisResults" />
+            <PageSentimentChart Results="AppState.UrlAnalysisResults" Display="showSentiment" />
         </div>
         <div class="col-md-6">
-            <KeywordSentimentChart Results="AppState.UrlAnalysisResults" />
+            <KeywordSentimentChart Results="AppState.UrlAnalysisResults" Display="showKeyword" />
         </div>
     </div>
 
     @if (AppState.UrlCrossDocLinks?.Any() == true)
     {
         <h3 class="text-primary">Cross-Document Semantic Links</h3>
-        <CrossDocLinks Links="AppState.UrlCrossDocLinks" />
+        <CrossDocLinks Links="AppState.UrlCrossDocLinks" Display="showLinks" />
     }
 
     <Virtualize Items="AppState.UrlAnalysisResults" Context="res">
@@ -88,6 +108,9 @@
 @code {
     private string urlsInput;
     private string searchTerms;
+    private bool showSentiment = true;
+    private bool showKeyword = true;
+    private bool showLinks = true;
 
     private async Task SubmitForAnalysis()
     {
@@ -135,6 +158,39 @@
         // Generate and store summary
         var summary = await SummaryService.GenerateSummaryAsync(result);
         AppState.SetUrlKeywordSummary(summary);
+    }
+
+    private async Task DownloadPageSentimentCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for sentiment CSV", "page_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "page_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportPageSentiment(AppState.UrlAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    private async Task DownloadKeywordCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for keyword sentiment CSV", "keyword_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "keyword_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportKeywordSentiment(AppState.UrlAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    private async Task DownloadLinksCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for cross links CSV", "cross_links");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "cross_links";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportCrossLinks(AppState.UrlCrossDocLinks);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
     }
 
     protected override void OnInitialized()
