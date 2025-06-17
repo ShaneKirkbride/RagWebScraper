@@ -92,8 +92,10 @@ All major services and controllers include XML documentation comments. IntelliSe
 
 ### Import CourtListener JSON
 
-1. Place your downloaded CourtListener JSON on disk
-2. Provide the path to `ICourtListenerService.GetOpinionsAsync`
+1. Navigate to `/upload-json`
+2. Enter keywords to analyze
+3. Select one or more CourtListener JSON files
+4. Press **Upload** and review the sentiment and keyword charts
 
 ### Query RAG
 

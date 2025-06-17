@@ -70,6 +70,7 @@ builder.Services.AddSingleton<IKeywordContextSentimentService, KeywordContextSen
 builder.Services.AddSingleton<KeywordSentimentSummaryService>();
 builder.Services.AddSingleton<IPageAnalyzerService, PageAnalyzerService>();
 builder.Services.AddSingleton<IDocumentClusterer, TfidfKMeansClusterer>();
+builder.Services.AddSingleton<ICourtOpinionAnalyzerService, CourtOpinionAnalyzerService>();
 
 // Scoped / Page-bound
 builder.Services.AddScoped<IAnalysisService, PdfAnalysisService>();
