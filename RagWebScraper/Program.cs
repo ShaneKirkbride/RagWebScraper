@@ -61,6 +61,7 @@ builder.Services.AddSingleton<IRagAnalysisQueue, RagAnalysisQueue>();
 builder.Services.AddHostedService<RagAnalysisWorker>();
 builder.Services.AddSingleton<IRagQueryQueue, RagQueryQueue>();
 builder.Services.AddHostedService<RagQueryWorker>();
+builder.Services.AddSingleton<ICourtListenerService, FileCourtListenerService>();
 
 // Analysis / AI
 builder.Services.AddSingleton<ISentimentAnalyzer, SentimentAnalyzerService>();

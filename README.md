@@ -4,7 +4,7 @@ This project implements a sentiment-aware **Retrieval-Augmented Generation (RAG)
 
 ## Features
 
-* **Ingest from URLs or PDFs**
+* **Ingest from URLs, PDFs, or CourtListener JSON files**
 * **Local Sentiment Analysis** using ONNX model and ML.NET
 * **Keyword Frequency & Context Sentiment Extraction**
 * **Vector Embedding with OpenAI**
@@ -89,6 +89,11 @@ All major services and controllers include XML documentation comments. IntelliSe
 2. Enter keywords
 3. Select one or more PDFs
 4. Analyze and review results & charts
+
+### Import CourtListener JSON
+
+1. Place your downloaded CourtListener JSON on disk
+2. Provide the path to `ICourtListenerService.GetOpinionsAsync`
 
 ### Query RAG
 
