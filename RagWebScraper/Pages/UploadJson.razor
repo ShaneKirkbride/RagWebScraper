@@ -1,0 +1,104 @@
+@page "/upload-json"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AppStateService AppState
+@inject IJSRuntime JS
+
+@using RagWebScraper.Models
+
+<h3 class="mb-3 text-primary">Upload CourtListener JSON</h3>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Enter search keywords (comma-separated):</label>
+            <input type="text" class="form-control" @bind="searchTerms" />
+        </div>
+
+        <InputFile OnChange="HandleUpload" multiple accept=".json" />
+        @if (!string.IsNullOrWhiteSpace(uploadStatus))
+        {
+            <p class="text-success">@uploadStatus</p>
+        }
+    </div>
+</div>
+
+@if (AppState.CourtListenerAnalysisResults?.Any() == true)
+{
+    <h3 class="text-success">JSON Analysis Results</h3>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <PageSentimentChart Results="AppState.CourtListenerAnalysisResults" Display="true" />
+        </div>
+        <div class="col-md-6">
+            <KeywordSentimentChart Results="AppState.CourtListenerAnalysisResults" Display="true" />
+        </div>
+    </div>
+
+    @foreach (var result in AppState.CourtListenerAnalysisResults)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>@result.FileName</h5>
+                <p>
+                    Page Sentiment Score:
+                    <span class="badge bg-primary">@result.PageSentimentScore</span>
+                </p>
+                @if (result.KeywordSentimentScores?.Any() == true)
+                {
+                    <h6>Keyword Sentiments:</h6>
+                    <ul>
+                        @foreach (var kv in result.KeywordSentimentScores)
+                        {
+                            <li>
+                                <strong>@kv.Key</strong> :
+                                <span class="badge bg-success">@kv.Value</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                @if (result.KeywordFrequencies?.Count > 0)
+                {
+                    <KeywordChart Frequencies="@result.KeywordFrequencies" />
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private string searchTerms = string.Empty;
+    private string? uploadStatus;
+
+    private async Task HandleUpload(InputFileChangeEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerms))
+        {
+            uploadStatus = "Please provide keywords before uploading.";
+            return;
+        }
+
+        var form = new MultipartFormDataContent();
+        foreach (var file in e.GetMultipleFiles())
+        {
+            var stream = file.OpenReadStream();
+            var content = new StreamContent(stream);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            form.Add(content, "files", file.Name);
+        }
+        form.Add(new StringContent(searchTerms), "keywords");
+
+        var apiUrl = Navigation.BaseUri + "api/courtlistener/analyze";
+        var response = await Http.PostAsync(apiUrl, form);
+        if (response.IsSuccessStatusCode)
+        {
+            var results = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];
+            AppState.SetCourtListenerResults(results);
+            uploadStatus = "JSON files analyzed.";
+        }
+        else
+        {
+            uploadStatus = $"Upload failed: {response.ReasonPhrase}";
+        }
+    }
+}
