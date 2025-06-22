@@ -15,7 +15,7 @@
             <input type="text" class="form-control" @bind="searchTerms" />
         </div>
 
-        <InputFile OnChange="HandleUpload" multiple accept=".json" />
+        <InputFile OnChange="HandleUpload" multiple accept=".json" webkitdirectory directory />
         @if (!string.IsNullOrWhiteSpace(uploadStatus))
         {
             <p class="text-success">@uploadStatus</p>
