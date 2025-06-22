@@ -8,7 +8,7 @@ public class AppStateService
     public List<AnalysisResult> UrlAnalysisResults { get; private set; } = new();
 
     public List<AnalysisResult> PdfAnalysisResults { get; private set; } = new();
-    public List<AnalysisResult> CourtListenerAnalysisResults { get; private set; } = new();
+    public List<AnalysisResult> JsonAnalysisResults { get; private set; } = new();
     public List<EntityGraph> EntityGraphs { get; private set; } = new();
 
     public string PdfKeywordSummary { get; private set; } = string.Empty;
@@ -73,9 +73,9 @@ public class AppStateService
         NotifyStateChanged();
     }
 
-    public void SetCourtListenerResults(List<AnalysisResult> results)
+    public void SetJsonResults(List<AnalysisResult> results)
     {
-        CourtListenerAnalysisResults = results;
+        JsonAnalysisResults = results;
         NotifyStateChanged();
     }
 
