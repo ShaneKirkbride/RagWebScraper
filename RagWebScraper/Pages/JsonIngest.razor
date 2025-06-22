@@ -1,0 +1,34 @@
+@page "/json-ingest"
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<h3 class="mb-3 text-primary">Upload JSON for Ingestion</h3>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <InputFile OnChange="HandleUpload" multiple accept=".json" />
+        @if (!string.IsNullOrWhiteSpace(status))
+        {
+            <p class="text-success">@status</p>
+        }
+    </div>
+</div>
+
+@code {
+    private string? status;
+
+    private async Task HandleUpload(InputFileChangeEventArgs e)
+    {
+        var form = new MultipartFormDataContent();
+        foreach (var file in e.GetMultipleFiles())
+        {
+            var stream = file.OpenReadStream();
+            var content = new StreamContent(stream);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            form.Add(content, "files", file.Name);
+        }
+
+        var response = await Http.PostAsync(Nav.BaseUri + "api/json-ingest/upload", form);
+        status = response.IsSuccessStatusCode ? "JSON files ingested." : $"Upload failed: {response.ReasonPhrase}";
+    }
+}
