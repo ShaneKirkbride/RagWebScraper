@@ -6,7 +6,10 @@
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <InputFile OnChange="HandleUpload" multiple accept=".json" webkitdirectory directory />
+        <InputFile OnChange="HandleSelection" multiple accept=".json" webkitdirectory directory />
+        <button class="btn btn-primary mt-2" @onclick="StartUpload" disabled="@(!_selectedFiles?.Any() ?? true)">
+            <i class="bi bi-upload"></i> Start Upload
+        </button>
         @if (!string.IsNullOrWhiteSpace(status))
         {
             <p class="text-success">@status</p>
@@ -15,12 +18,25 @@
 </div>
 
 @code {
+    private IReadOnlyList<IBrowserFile>? _selectedFiles;
     private string? status;
 
-    private async Task HandleUpload(InputFileChangeEventArgs e)
+    private void HandleSelection(InputFileChangeEventArgs e)
     {
+        _selectedFiles = e.GetMultipleFiles();
+        status = null;
+    }
+
+    private async Task StartUpload()
+    {
+        if (_selectedFiles == null || _selectedFiles.Count == 0)
+        {
+            status = "No files selected.";
+            return;
+        }
+
         var form = new MultipartFormDataContent();
-        foreach (var file in e.GetMultipleFiles())
+        foreach (var file in _selectedFiles)
         {
             var stream = file.OpenReadStream();
             var content = new StreamContent(stream);
