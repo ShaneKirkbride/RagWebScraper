@@ -6,7 +6,7 @@
 
 @using RagWebScraper.Models
 
-<h3 class="mb-3 text-primary">Upload CourtListener JSON</h3>
+<h3 class="mb-3 text-primary">Upload JSON for Analysis</h3>
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
@@ -23,19 +23,19 @@
     </div>
 </div>
 
-@if (AppState.CourtListenerAnalysisResults?.Any() == true)
+@if (AppState.JsonAnalysisResults?.Any() == true)
 {
     <h3 class="text-success">JSON Analysis Results</h3>
     <div class="row mb-4">
         <div class="col-md-6">
-            <PageSentimentChart Results="AppState.CourtListenerAnalysisResults" Display="true" />
+            <PageSentimentChart Results="AppState.JsonAnalysisResults" Display="true" />
         </div>
         <div class="col-md-6">
-            <KeywordSentimentChart Results="AppState.CourtListenerAnalysisResults" Display="true" />
+            <KeywordSentimentChart Results="AppState.JsonAnalysisResults" Display="true" />
         </div>
     </div>
 
-    @foreach (var result in AppState.CourtListenerAnalysisResults)
+    @foreach (var result in AppState.JsonAnalysisResults)
     {
         <div class="card mb-3">
             <div class="card-body">
@@ -93,7 +93,7 @@
         if (response.IsSuccessStatusCode)
         {
             var results = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];
-            AppState.SetCourtListenerResults(results);
+            AppState.SetJsonResults(results);
             uploadStatus = "JSON files analyzed.";
         }
         else
