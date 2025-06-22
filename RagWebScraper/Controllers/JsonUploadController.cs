@@ -33,7 +33,8 @@ public class JsonUploadController : ControllerBase
 
         foreach (var file in files)
         {
-            var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{file.FileName}");
+            var safeName = Path.GetFileName(file.FileName);
+            var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{safeName}");
             await using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
             {
                 await file.CopyToAsync(fs, token);

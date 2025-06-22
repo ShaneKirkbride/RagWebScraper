@@ -6,7 +6,7 @@
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <InputFile OnChange="HandleUpload" multiple accept=".json" />
+        <InputFile OnChange="HandleUpload" multiple accept=".json" webkitdirectory directory />
         @if (!string.IsNullOrWhiteSpace(status))
         {
             <p class="text-success">@status</p>
