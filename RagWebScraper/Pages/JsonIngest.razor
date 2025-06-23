@@ -35,16 +35,22 @@
             return;
         }
 
-        var form = new MultipartFormDataContent();
         foreach (var file in _selectedFiles)
         {
-            var stream = file.OpenReadStream();
-            var content = new StreamContent(stream);
+            using var form = new MultipartFormDataContent();
+            using var stream = file.OpenReadStream(1_073_741_824); // 1GB limit
+            using var content = new StreamContent(stream);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
             form.Add(content, "files", file.Name);
+
+            var response = await Http.PostAsync(Nav.BaseUri + "api/json-ingest/upload", form);
+            if (!response.IsSuccessStatusCode)
+            {
+                status = $"Upload failed for {file.Name}: {response.ReasonPhrase}";
+                return;
+            }
         }
 
-        var response = await Http.PostAsync(Nav.BaseUri + "api/json-ingest/upload", form);
-        status = response.IsSuccessStatusCode ? "JSON files ingested." : $"Upload failed: {response.ReasonPhrase}";
+        status = "JSON files ingested.";
     }
 }
