@@ -3,9 +3,7 @@
 @inject NavigationManager Navigation
 @inject KeywordSentimentSummaryService SummaryService
 @inject AppStateService AppState
-@inject IRagAnalyzerService RagAnalyzer
-@inject TextChunker Chunker
-@inject CombinedCrossDocLinkService CombinedLinkService
+
 @using System.Text
 @inject ICsvExportService CsvExporter
 @inject IJSRuntime JS
@@ -47,13 +45,8 @@
             <input class="form-check-input" type="checkbox" id="toggleKeyword" @bind="showKeyword" />
             <label class="form-check-label" for="toggleKeyword">Show Keyword Chart</label>
         </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="toggleLinks" @bind="showLinks" />
-            <label class="form-check-label" for="toggleLinks">Show Cross Links</label>
-        </div>
         <button class="btn btn-sm btn-secondary ms-3" @onclick="DownloadPageSentimentCsv">Download Sentiment CSV</button>
         <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadKeywordCsv">Download Keyword CSV</button>
-        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadLinksCsv">Download Links CSV</button>
     </div>
     <div class="col-md-6">
         @if (!string.IsNullOrWhiteSpace(AppState.UrlKeywordSummary))
@@ -72,12 +65,6 @@
             <KeywordSentimentChart Results="AppState.UrlAnalysisResults" Display="showKeyword" />
         </div>
     </div>
-
-    @if (AppState.UrlCrossDocLinks?.Any() == true)
-    {
-        <h3 class="text-primary">Cross-Document Semantic Links</h3>
-        <CrossDocLinks Links="AppState.UrlCrossDocLinks" Display="showLinks" />
-    }
 
     <Virtualize Items="AppState.UrlAnalysisResults" Context="res">
         <div class="card mb-3">
@@ -110,7 +97,6 @@
     private string searchTerms;
     private bool showSentiment = true;
     private bool showKeyword = true;
-    private bool showLinks = true;
 
     private async Task SubmitForAnalysis()
     {
@@ -138,22 +124,7 @@
 
         AppState.SetUrlResults(result);
 
-        if (result.Count > 1)
-        {
-            var docs = result.Select(r => new AnalyzedDocument(
-                r.Url,
-                Chunker.ChunkText(r.RawText)
-                    .Select(t => new DocumentChunk(r.Url, t))
-                    .ToList())).ToList();
-            var set = new DocumentSet(docs);
-            var analysis = await RagAnalyzer.AnalyzeAsync(set);
-            AppState.SetUrlCrossDocLinks(analysis.Links.ToList());
-        }
 
-        var combined = await CombinedLinkService.ComputeLinksAsync(
-            result,
-            AppState.PdfAnalysisResults);
-        AppState.SetAllCrossDocLinks(combined);
 
         // Generate and store summary
         var summary = await SummaryService.GenerateSummaryAsync(result);
@@ -182,16 +153,6 @@
         await JS.InvokeVoidAsync("downloadFile", fileName, content);
     }
 
-    private async Task DownloadLinksCsv()
-    {
-        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for cross links CSV", "cross_links");
-        if (string.IsNullOrWhiteSpace(baseName))
-            baseName = "cross_links";
-        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
-        var bytes = CsvExporter.ExportCrossLinks(AppState.UrlCrossDocLinks);
-        var content = Encoding.UTF8.GetString(bytes);
-        await JS.InvokeVoidAsync("downloadFile", fileName, content);
-    }
 
     protected override void OnInitialized()
     {

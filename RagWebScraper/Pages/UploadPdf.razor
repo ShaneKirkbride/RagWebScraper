@@ -2,9 +2,6 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AppStateService AppState
-@inject IRagAnalyzerService RagAnalyzer
-@inject TextChunker Chunker
-@inject CombinedCrossDocLinkService CombinedLinkService
 @inject KeywordSentimentSummaryService SummaryService
 @inject ICsvExportService CsvExporter
 @inject IJSRuntime JS
@@ -47,21 +44,10 @@
             <input class="form-check-input" type="checkbox" id="togglePdfKeyword" @bind="showKeyword" />
             <label class="form-check-label" for="togglePdfKeyword">Show Keyword Chart</label>
         </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="togglePdfLinks" @bind="showLinks" />
-            <label class="form-check-label" for="togglePdfLinks">Show Cross Links</label>
-        </div>
         <button class="btn btn-sm btn-secondary ms-3" @onclick="DownloadPageSentimentCsv">Download Sentiment CSV</button>
         <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadKeywordCsv">Download Keyword CSV</button>
-        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadLinksCsv">Download Links CSV</button>
     </div>
-    <div class="col-md-6">
-        @if (AppState.PdfCrossDocLinks?.Any() == true)
-        {
-            <h3 class="text-primary">Cross-Document Semantic Links</h3>
-            <CrossDocLinks Links="AppState.PdfCrossDocLinks" Display="showLinks" />
-        }
-    </div>
+    
     <div class="col-md-6">
         @if (!string.IsNullOrWhiteSpace(AppState.PdfKeywordSummary))
         {
@@ -126,7 +112,6 @@
     private string searchTerms = string.Empty;
     private bool showSentiment = true;
     private bool showKeyword = true;
-    private bool showLinks = true;
 
     private Timer? _pollingTimer;
     private List<string> uploadedFileNames = new();
@@ -208,22 +193,7 @@
                     }
 
 
-                    if (results.Count > 1)
-                    {
-                        var docs = results.Select(r => new AnalyzedDocument(
-                            r.FileName,
-                            Chunker.ChunkText(r.RawText)
-                                .Select(t => new DocumentChunk(r.FileName, t))
-                                .ToList())).ToList();
-                        var set = new DocumentSet(docs);
-                        var analysis = await RagAnalyzer.AnalyzeAsync(set);
-                        AppState.SetPdfCrossDocLinks(analysis.Links.ToList());
-                    }
 
-                    var combined = await CombinedLinkService.ComputeLinksAsync(
-                        AppState.UrlAnalysisResults,
-                        results);
-                    AppState.SetAllCrossDocLinks(combined);
 
                     _pollingTimer?.Stop();
                     _pollingTimer?.Dispose();
@@ -263,16 +233,6 @@
         await JS.InvokeVoidAsync("downloadFile", fileName, content);
     }
 
-    private async Task DownloadLinksCsv()
-    {
-        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for cross links CSV", "cross_links");
-        if (string.IsNullOrWhiteSpace(baseName))
-            baseName = "cross_links";
-        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
-        var bytes = CsvExporter.ExportCrossLinks(AppState.PdfCrossDocLinks);
-        var content = Encoding.UTF8.GetString(bytes);
-        await JS.InvokeVoidAsync("downloadFile", fileName, content);
-    }
 
     protected override void OnInitialized()
     {

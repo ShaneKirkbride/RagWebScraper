@@ -17,14 +17,14 @@
         Generating links...
     </p>
 }
-else if (!AppState.AllCrossDocLinks.Any() &&
-         !AppState.PdfCrossDocLinks.Any() &&
-         !AppState.UrlCrossDocLinks.Any())
+else if (!AppState.UrlAnalysisResults.Any() && !AppState.PdfAnalysisResults.Any())
 {
-    <p>No cross-document links available. Please analyze some documents first.</p>
+    <p>No documents analyzed yet. Please analyze some documents first.</p>
 }
 else
 {
+    <button class="btn btn-primary mb-3" @onclick="GenerateLinksAsync">Start Cross Link Analysis</button>
+
     if (AppState.AllCrossDocLinks.Any())
     {
         <h4 class="mt-3">All Documents</h4>
@@ -45,27 +45,33 @@ else
 }
 
 @code {
-    private bool _isLoading = true;
+    private bool _isLoading;
 
     protected override void OnInitialized()
     {
         AppState.OnChange += StateHasChanged;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await GenerateLinksAsync();
-        }
-    }
-
     private async Task GenerateLinksAsync()
     {
-        var links = await CombinedLinkService.ComputeLinksAsync(
+        _isLoading = true;
+        StateHasChanged();
+
+        var urlLinks = await CombinedLinkService.ComputeLinksAsync(
+            AppState.UrlAnalysisResults,
+            Enumerable.Empty<AnalysisResult>());
+        AppState.SetUrlCrossDocLinks(urlLinks);
+
+        var pdfLinks = await CombinedLinkService.ComputeLinksAsync(
+            Enumerable.Empty<AnalysisResult>(),
+            AppState.PdfAnalysisResults);
+        AppState.SetPdfCrossDocLinks(pdfLinks);
+
+        var allLinks = await CombinedLinkService.ComputeLinksAsync(
             AppState.UrlAnalysisResults,
             AppState.PdfAnalysisResults);
-        AppState.SetAllCrossDocLinks(links);
+        AppState.SetAllCrossDocLinks(allLinks);
+
         _isLoading = false;
         StateHasChanged();
     }
