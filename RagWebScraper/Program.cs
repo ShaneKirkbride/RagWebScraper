@@ -68,6 +68,7 @@ builder.Services.AddSingleton<ISentimentAnalyzer, SentimentAnalyzerService>();
 builder.Services.AddSingleton<IKeywordExtractor, KeywordExtractorService>();
 builder.Services.AddSingleton<IKeywordContextSentimentService, KeywordContextSentimentService>();
 builder.Services.AddSingleton<KeywordSentimentSummaryService>();
+builder.Services.AddSingleton<IChatCompletionService, OpenAIChatCompletionService>();
 builder.Services.AddSingleton<IPageAnalyzerService, PageAnalyzerService>();
 builder.Services.AddSingleton<IDocumentClusterer, TfidfKMeansClusterer>();
 builder.Services.AddSingleton<ICourtOpinionAnalyzerService, CourtOpinionAnalyzerService>();
@@ -76,6 +77,7 @@ builder.Services.AddSingleton<IJsonIngestService, JsonIngestService>();
 // Scoped / Page-bound
 builder.Services.AddScoped<IAnalysisService, PdfAnalysisService>();
 builder.Services.AddScoped<IRagAnalyzerService, RagAnalyzerService>();
+builder.Services.AddScoped<IRagResearchAgent, RagResearchAgent>();
 builder.Services.AddScoped<IKnowledgeGraphService, KnowledgeGraphService>();
 builder.Services.AddScoped<IEntityGraphExtractor, SpaceEntityGraphExtractor>();
 builder.Services.AddScoped<ICrossDocumentLinker, SemanticCrossLinker>();
@@ -85,7 +87,7 @@ builder.Services.AddScoped<CombinedCrossDocLinkService>();
 // HttpClients
 // ---------------------------------------------
 builder.Services.AddHttpClient<IWebScraperService, WebScraperService>();
-builder.Services.AddHttpClient<VectorStoreService>();
+builder.Services.AddHttpClient<IVectorStoreService, VectorStoreService>();
 builder.Services.AddHttpClient<QdrantSetupService>();
 builder.Services.AddHttpClient<IPdfScraperService, PdfScraperService>();
 

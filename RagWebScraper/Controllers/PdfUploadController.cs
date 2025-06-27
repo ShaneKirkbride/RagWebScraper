@@ -17,7 +17,7 @@ public class PdfUploadController : ControllerBase
     private readonly ISentimentAnalyzer _sentiment;
     private readonly TextChunker _chunker;
     private readonly IEmbeddingService _embedding;
-    private readonly VectorStoreService _store;
+    private readonly IVectorStoreService _store;
     private readonly IKeywordExtractor _keywordExtractor;
     private readonly IKeywordContextSentimentService _keywordContextSentimentService;
     private readonly IChunkIngestorService _chunkIngestor;
@@ -31,7 +31,7 @@ public class PdfUploadController : ControllerBase
         ISentimentAnalyzer sentiment,
         TextChunker chunker,
         IEmbeddingService embedding,
-        VectorStoreService store,
+        IVectorStoreService store,
         IKeywordExtractor keywordExtractor,
         IKeywordContextSentimentService keywordContextSentimentService,
         IChunkIngestorService chunkIngestor,

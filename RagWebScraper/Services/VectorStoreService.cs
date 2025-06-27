@@ -2,7 +2,7 @@
 
 namespace RagWebScraper.Services
 {
-    public class VectorStoreService
+    public class VectorStoreService : IVectorStoreService
     {
         private readonly HttpClient _httpClient;
         private readonly string _collectionName = "rag";
