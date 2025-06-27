@@ -4,13 +4,13 @@ public class RagQueryWorker : ChannelBackgroundWorker<RagQueryRequest>
 {
     private readonly ILogger<RagQueryWorker> _logger;
     private readonly IEmbeddingService _embedding;
-    private readonly VectorStoreService _vectorStore;
+    private readonly IVectorStoreService _vectorStore;
 
     public RagQueryWorker(
         IRagQueryQueue queue,
         ILogger<RagQueryWorker> logger,
         IEmbeddingService embedding,
-        VectorStoreService vectorStore)
+        IVectorStoreService vectorStore)
         : base(queue, logger)
     {
         _logger = logger;

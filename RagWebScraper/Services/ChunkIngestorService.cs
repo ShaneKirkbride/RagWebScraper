@@ -18,9 +18,9 @@ public class ChunkIngestorService : IChunkIngestorService
 {
     private readonly TextChunker _chunker;
     private readonly IEmbeddingService _embeddingService;
-    private readonly VectorStoreService _vectorStore;
+    private readonly IVectorStoreService _vectorStore;
 
-    public ChunkIngestorService(TextChunker chunker, IEmbeddingService embedding, VectorStoreService vectorStore)
+    public ChunkIngestorService(TextChunker chunker, IEmbeddingService embedding, IVectorStoreService vectorStore)
     {
         _chunker = chunker;
         _embeddingService = embedding;
