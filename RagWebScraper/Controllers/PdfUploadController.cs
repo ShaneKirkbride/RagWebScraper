@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
-using static RagWebScraper.Pages.UploadPdf;
-using static RagWebScraper.Pages.KnowledgeGraph;
 
 [ApiController]
 [Route("api/pdf")]

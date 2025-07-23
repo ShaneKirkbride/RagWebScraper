@@ -1,0 +1,405 @@
+@page "/upload"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AppStateService AppState
+@inject KeywordSentimentSummaryService SummaryService
+@inject ICsvExportService CsvExporter
+@inject IJSRuntime JS
+
+@implements IDisposable
+@using System.Text
+@using System.Timers
+@using RagWebScraper.Models
+
+<h3 class="mb-3 text-primary">Upload Documents or URLs</h3>
+<p>
+    Paste website URLs or select PDF/JSON files below. Provide keywords to analyze.
+    Uploaded content will be processed and results will appear once analysis completes.
+</p>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Website URLs (one per line)</label>
+            <textarea class="form-control" rows="3" @bind="urlsInput"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Upload PDF or JSON files</label>
+            <InputFile OnChange="HandleFileSelection" multiple accept=".pdf,.json" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Search keywords (comma-separated)</label>
+            <input type="text" class="form-control" @bind="searchTerms" />
+        </div>
+        <button class="btn btn-primary" @onclick="StartUpload">
+            <i class="bi bi-upload"></i> Upload and Analyze
+        </button>
+        @if (!string.IsNullOrWhiteSpace(uploadStatus))
+        {
+            <p class="text-success mt-2">@uploadStatus</p>
+        }
+    </div>
+</div>
+
+@if (AppState.UrlAnalysisResults?.Any() == true)
+{
+    <h3 class="text-success">URL Analysis Results</h3>
+    <div class="mb-2">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="toggleUrlSentiment" @bind="showUrlSentiment" />
+            <label class="form-check-label" for="toggleUrlSentiment">Show Sentiment Chart</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="toggleUrlKeyword" @bind="showUrlKeyword" />
+            <label class="form-check-label" for="toggleUrlKeyword">Show Keyword Chart</label>
+        </div>
+        <button class="btn btn-sm btn-secondary ms-3" @onclick="DownloadUrlSentimentCsv">Download Sentiment CSV</button>
+        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadUrlKeywordCsv">Download Keyword CSV</button>
+    </div>
+    <div class="col-md-6">
+        @if (!string.IsNullOrWhiteSpace(AppState.UrlKeywordSummary))
+        {
+            <div class="alert alert-info">
+                <strong>AI Summary:</strong><br />
+                @AppState.UrlKeywordSummary
+            </div>
+        }
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <PageSentimentChart Results="AppState.UrlAnalysisResults" Display="showUrlSentiment" />
+        </div>
+        <div class="col-md-6">
+            <KeywordSentimentChart Results="AppState.UrlAnalysisResults" Display="showUrlKeyword" />
+        </div>
+    </div>
+    <Virtualize Items="AppState.UrlAnalysisResults" Context="res">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>@res.Url</h5>
+                <p>Page Sentiment Score: <span class="badge bg-primary">@res.PageSentimentScore</span></p>
+                <h6>Keyword Sentiments:</h6>
+                <ul>
+                    @foreach (var kv in res.KeywordSentimentScores)
+                    {
+                        <li><strong>@kv.Key</strong> : <span class="badge bg-success">@kv.Value</span></li>
+                    }
+                </ul>
+                <KeywordChart Frequencies="@res.KeywordFrequencies" />
+            </div>
+        </div>
+    </Virtualize>
+}
+
+@if (AppState.PdfAnalysisResults?.Any() == true)
+{
+    <h3 class="text-success">PDF Analysis Results</h3>
+    <div class="mb-2">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="togglePdfSentiment" @bind="showPdfSentiment" />
+            <label class="form-check-label" for="togglePdfSentiment">Show Sentiment Chart</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="togglePdfKeyword" @bind="showPdfKeyword" />
+            <label class="form-check-label" for="togglePdfKeyword">Show Keyword Chart</label>
+        </div>
+        <button class="btn btn-sm btn-secondary ms-3" @onclick="DownloadPdfSentimentCsv">Download Sentiment CSV</button>
+        <button class="btn btn-sm btn-secondary ms-1" @onclick="DownloadPdfKeywordCsv">Download Keyword CSV</button>
+    </div>
+    <div class="col-md-6">
+        @if (!string.IsNullOrWhiteSpace(AppState.PdfKeywordSummary))
+        {
+            <div class="alert alert-info">
+                <strong>AI Summary:</strong><br />
+                @AppState.PdfKeywordSummary
+            </div>
+        }
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <PageSentimentChart Results="AppState.PdfAnalysisResults" Display="showPdfSentiment" />
+        </div>
+        <div class="col-md-6">
+            <KeywordSentimentChart Results="AppState.PdfAnalysisResults" Display="showPdfKeyword" />
+        </div>
+    </div>
+    @foreach (var result in AppState.PdfAnalysisResults)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>@result.FileName</h5>
+                <p>Page Sentiment Score: <span class="badge bg-primary">@result.PageSentimentScore</span></p>
+                @if (!string.IsNullOrWhiteSpace(result.KeywordSummary))
+                {
+                    <div class="alert alert-info">
+                        <strong>AI Summary:</strong><br />
+                        @AppState.PdfKeywordSummary
+                    </div>
+                }
+                @if (result.KeywordSentimentScores?.Any() == true)
+                {
+                    <h6>Keyword Sentiments:</h6>
+                    <ul>
+                        @foreach (var kv in result.KeywordSentimentScores)
+                        {
+                            <li><strong>@kv.Key</strong> : <span class="badge bg-success">@kv.Value</span></li>
+                        }
+                    </ul>
+                }
+                @if (result.KeywordFrequencies?.Count > 0)
+                {
+                    <KeywordChart Frequencies="@result.KeywordFrequencies" />
+                }
+            </div>
+        </div>
+    }
+}
+
+@if (AppState.JsonAnalysisResults?.Any() == true)
+{
+    <h3 class="text-success">JSON Analysis Results</h3>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <PageSentimentChart Results="AppState.JsonAnalysisResults" Display="true" />
+        </div>
+        <div class="col-md-6">
+            <KeywordSentimentChart Results="AppState.JsonAnalysisResults" Display="true" />
+        </div>
+    </div>
+    @foreach (var result in AppState.JsonAnalysisResults)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>@result.FileName</h5>
+                <p>Page Sentiment Score: <span class="badge bg-primary">@result.PageSentimentScore</span></p>
+                @if (result.KeywordSentimentScores?.Any() == true)
+                {
+                    <h6>Keyword Sentiments:</h6>
+                    <ul>
+                        @foreach (var kv in result.KeywordSentimentScores)
+                        {
+                            <li><strong>@kv.Key</strong> : <span class="badge bg-success">@kv.Value</span></li>
+                        }
+                    </ul>
+                }
+                @if (result.KeywordFrequencies?.Count > 0)
+                {
+                    <KeywordChart Frequencies="@result.KeywordFrequencies" />
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private string urlsInput = string.Empty;
+    private string searchTerms = string.Empty;
+    private string? uploadStatus;
+    private IReadOnlyList<IBrowserFile> selectedFiles = Array.Empty<IBrowserFile>();
+    private System.Timers.Timer? _pollingTimer;
+    private List<string> uploadedPdfNames = new();
+    private bool showUrlSentiment = true;
+    private bool showUrlKeyword = true;
+    private bool showPdfSentiment = true;
+    private bool showPdfKeyword = true;
+
+    private void HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        selectedFiles = e.GetMultipleFiles();
+        uploadStatus = null;
+    }
+
+    private async Task StartUpload()
+    {
+        uploadStatus = null;
+
+        if (selectedFiles.Count == 0 && string.IsNullOrWhiteSpace(urlsInput))
+        {
+            uploadStatus = "Please enter URLs or select files.";
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(urlsInput))
+        {
+            await UploadUrls();
+        }
+
+        if (selectedFiles.Count > 0)
+        {
+            await UploadFiles();
+        }
+    }
+
+    private async Task UploadUrls()
+    {
+        var request = new UrlAnalysisRequest
+        {
+            Urls = urlsInput.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+            Keywords = searchTerms.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+        };
+
+        var response = await Http.PostAsJsonAsync(Navigation.BaseUri + "api/rag/analyze", request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];
+            AppState.SetUrlResults(result);
+            var summary = await SummaryService.GenerateSummaryAsync(result);
+            AppState.SetUrlKeywordSummary(summary);
+        }
+        else
+        {
+            uploadStatus = "URL analysis failed.";
+        }
+    }
+
+    private async Task UploadFiles()
+    {
+        var pdfForm = new MultipartFormDataContent();
+        var jsonForm = new MultipartFormDataContent();
+
+        foreach (var file in selectedFiles)
+        {
+            var stream = file.OpenReadStream(1_073_741_824);
+            var content = new StreamContent(stream);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                pdfForm.Add(content, "files", file.Name);
+                uploadedPdfNames.Add(file.Name);
+            }
+            else if (file.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                jsonForm.Add(content, "files", file.Name);
+            }
+        }
+
+        if (pdfForm.Count() > 0)
+        {
+            pdfForm.Add(new StringContent(searchTerms), "keywords");
+            var response = await Http.PostAsync(Navigation.BaseUri + "api/pdf/analyze", pdfForm);
+            if (response.IsSuccessStatusCode)
+            {
+                uploadStatus = "Files uploaded and queued for processing.";
+                StartPolling();
+            }
+            else
+            {
+                uploadStatus = $"PDF upload failed: {response.ReasonPhrase}";
+            }
+        }
+
+        if (jsonForm.Count() > 0)
+        {
+            jsonForm.Add(new StringContent(searchTerms), "keywords");
+            var response = await Http.PostAsync(Navigation.BaseUri + "api/courtlistener/analyze", jsonForm);
+            if (response.IsSuccessStatusCode)
+            {
+                var results = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];
+                AppState.SetJsonResults(results);
+            }
+            else
+            {
+                uploadStatus = $"JSON upload failed: {response.ReasonPhrase}";
+            }
+        }
+    }
+
+    private void StartPolling()
+    {
+        _pollingTimer = new System.Timers.Timer(10000);
+        _pollingTimer.Elapsed += async (_, _) => { await InvokeAsync(PollForResults); };
+        _pollingTimer.AutoReset = true;
+        _pollingTimer.Enabled = true;
+    }
+
+    private async Task PollForResults()
+    {
+        try
+        {
+            var results = await Http.GetFromJsonAsync<List<AnalysisResult>>(Navigation.BaseUri + "api/pdf/results");
+            var summary = await SummaryService.GenerateSummaryAsync(results);
+            AppState.SetPdfKeywordSummary(summary);
+
+            if (results is { Count: > 0 })
+            {
+                var names = results.Select(r => r.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                if (uploadedPdfNames.All(n => names.Contains(n)))
+                {
+                    if (!AppState.PdfAnalysisResults.SequenceEqual(results, new AnalysisResultComparer()))
+                    {
+                        AppState.SetPdfResults(results);
+                        uploadStatus = "All PDF analyses complete.";
+                    }
+
+                    _pollingTimer?.Stop();
+                    _pollingTimer?.Dispose();
+                    _pollingTimer = null;
+                    uploadedPdfNames.Clear();
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadStatus = $"Error retrieving results: {ex.Message}";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DownloadUrlSentimentCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for sentiment CSV", "page_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "page_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportPageSentiment(AppState.UrlAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    private async Task DownloadUrlKeywordCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for keyword sentiment CSV", "keyword_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "keyword_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportKeywordSentiment(AppState.UrlAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    private async Task DownloadPdfSentimentCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for sentiment CSV", "page_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "page_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportPageSentiment(AppState.PdfAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    private async Task DownloadPdfKeywordCsv()
+    {
+        var baseName = await JS.InvokeAsync<string>("prompt", "Enter file name for keyword sentiment CSV", "keyword_sentiment");
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = "keyword_sentiment";
+        var fileName = $"{baseName}_{DateTime.Now:ddMMyyyyHHmmss}.csv";
+        var bytes = CsvExporter.ExportKeywordSentiment(AppState.PdfAnalysisResults);
+        var content = Encoding.UTF8.GetString(bytes);
+        await JS.InvokeVoidAsync("downloadFile", fileName, content);
+    }
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+        _pollingTimer?.Stop();
+        _pollingTimer?.Dispose();
+    }
+}
