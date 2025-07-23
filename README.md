@@ -77,25 +77,12 @@ All major services and controllers include XML documentation comments. IntelliSe
 
 ## Usage
 
-### Ingest URLs
+### Upload Content
 
-1. Navigate to `/analyze`
-2. Paste URLs and provide comma-separated keywords
-3. Analyze to view sentiment charts and keyword-level scores
-
-### Upload PDFs
-
-1. Navigate to `/upload-pdf`
-2. Enter keywords
-3. Select one or more PDFs
-4. Analyze and review results & charts
-
-### Import CourtListener JSON
-
-1. Navigate to `/upload-json`
-2. Enter keywords to analyze
-3. Select one or more CourtListener JSON files
-4. Press **Upload** and review the sentiment and keyword charts
+1. Navigate to `/upload`
+2. Paste website URLs or select PDF/JSON files
+3. Provide comma-separated keywords
+4. Press **Upload and Analyze** to begin processing and view results
 
 ### Query RAG
 
