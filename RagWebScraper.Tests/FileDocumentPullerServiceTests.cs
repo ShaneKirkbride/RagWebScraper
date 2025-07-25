@@ -7,10 +7,10 @@ using Xunit;
 
 namespace RagWebScraper.Tests;
 
-public class FileCourtListenerServiceTests
+public class FileDocumentPullerServiceTests
 {
     [Fact]
-    public async Task GetOpinionsAsync_ReadsOpinionsFromFile()
+    public async Task GetDocumentsAsync_ReadsDocumentsFromFile()
     {
         var data = new
         {
@@ -24,9 +24,9 @@ public class FileCourtListenerServiceTests
         var file = Path.GetTempFileName();
         await File.WriteAllTextAsync(file, JsonSerializer.Serialize(data));
 
-        var service = new FileCourtListenerService();
+        var service = new FileDocumentPullerService();
         var opinions = new List<CourtOpinion>();
-        await foreach (var op in service.GetOpinionsAsync(file))
+        await foreach (var op in service.GetDocumentsAsync(file))
         {
             opinions.Add(op);
         }

@@ -4,7 +4,7 @@ This project implements a sentiment-aware **Retrieval-Augmented Generation (RAG)
 
 ## Features
 
-* **Ingest from URLs, PDFs, or CourtListener JSON files**
+* **Ingest from URLs, PDFs, or JSON files**
 * **Local Sentiment Analysis** using ONNX model and ML.NET
 * **Keyword Frequency & Context Sentiment Extraction**
 * **Vector Embedding with OpenAI**

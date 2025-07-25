@@ -292,7 +292,7 @@
         if (jsonForm.Count() > 0)
         {
             jsonForm.Add(new StringContent(searchTerms), "keywords");
-            var response = await Http.PostAsync(Navigation.BaseUri + "api/courtlistener/analyze", jsonForm);
+            var response = await Http.PostAsync(Navigation.BaseUri + "api/documents/analyze", jsonForm);
             if (response.IsSuccessStatusCode)
             {
                 var results = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];

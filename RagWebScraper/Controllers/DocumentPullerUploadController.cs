@@ -5,16 +5,16 @@ using RagWebScraper.Services;
 namespace RagWebScraper.Controllers;
 
 /// <summary>
-/// Accepts CourtListener JSON uploads and returns analysis results.
+/// Accepts JSON uploads and returns analysis results.
 /// </summary>
 [ApiController]
-[Route("api/courtlistener")]
-public class CourtListenerUploadController : ControllerBase
+[Route("api/documents")]
+public class DocumentPullerUploadController : ControllerBase
 {
-    private readonly ICourtListenerService _loader;
+    private readonly IDocumentPullerService _loader;
     private readonly ICourtOpinionAnalyzerService _analyzer;
 
-    public CourtListenerUploadController(ICourtListenerService loader, ICourtOpinionAnalyzerService analyzer)
+    public DocumentPullerUploadController(IDocumentPullerService loader, ICourtOpinionAnalyzerService analyzer)
     {
         _loader = loader;
         _analyzer = analyzer;
@@ -37,7 +37,7 @@ public class CourtListenerUploadController : ControllerBase
                 await file.CopyToAsync(fs, token);
             }
 
-            await foreach (var opinion in _loader.GetOpinionsAsync(tempPath, token))
+            await foreach (var opinion in _loader.GetDocumentsAsync(tempPath, token))
             {
                 var result = await _analyzer.AnalyzeOpinionAsync(opinion, keywordList);
                 result.FileName = $"{opinion.CaseName} ({opinion.Id})";
