@@ -5,20 +5,20 @@ using RagWebScraper.Models;
 namespace RagWebScraper.Services;
 
 /// <summary>
-/// Client for retrieving court opinions from the CourtListener API.
+/// Client for retrieving documents from the CourtListener API.
 /// </summary>
-public sealed class CourtListenerService : ICourtListenerService
+public sealed class DocumentPullerService : IDocumentPullerService
 {
     private readonly HttpClient _httpClient;
     private const string BaseUrl = "https://www.courtlistener.com/api/rest/v3/opinions/";
 
-    public CourtListenerService(HttpClient httpClient)
+    public DocumentPullerService(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<CourtOpinion> GetOpinionsAsync(string query, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token = default)
+    public async IAsyncEnumerable<CourtOpinion> GetDocumentsAsync(string query, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token = default)
     {
         if (string.IsNullOrWhiteSpace(query))
             yield break;

@@ -4,12 +4,12 @@ using RagWebScraper.Models;
 namespace RagWebScraper.Services;
 
 /// <summary>
-/// Loads <see cref="CourtOpinion"/> instances from local CourtListener JSON files.
+/// Loads <see cref="CourtOpinion"/> instances from local JSON files.
 /// </summary>
-public sealed class FileCourtListenerService : ICourtListenerService
+public sealed class FileDocumentPullerService : IDocumentPullerService
 {
     /// <inheritdoc />
-    public async IAsyncEnumerable<CourtOpinion> GetOpinionsAsync(string filePath, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token = default)
+    public async IAsyncEnumerable<CourtOpinion> GetDocumentsAsync(string filePath, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token = default)
     {
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             yield break;

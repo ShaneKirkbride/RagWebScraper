@@ -8,7 +8,7 @@ using Xunit;
 
 namespace RagWebScraper.Tests;
 
-public class CourtListenerServiceTests
+public class DocumentPullerServiceTests
 {
     private class StubHandler : HttpMessageHandler
     {
@@ -18,7 +18,7 @@ public class CourtListenerServiceTests
     }
 
     [Fact]
-    public async Task GetOpinionsAsync_YieldsResultsAcrossPages()
+    public async Task GetDocumentsAsync_YieldsResultsAcrossPages()
     {
         var page1 = new { results = new[]{ new { id = 1, case_name = "a", plain_text = "A" } }, next = "http://host/next" };
         var page2 = new { results = new[]{ new { id = 2, case_name = "b", plain_text = "B" } }, next = (string?)null };
@@ -28,10 +28,10 @@ public class CourtListenerServiceTests
             var obj = req.RequestUri!.AbsoluteUri.Contains("next") ? page2 : page1;
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(obj) };
         });
-        var service = new CourtListenerService(new HttpClient(handler));
+        var service = new DocumentPullerService(new HttpClient(handler));
 
         var opinions = new List<CourtOpinion>();
-        await foreach (var op in service.GetOpinionsAsync("test"))
+        await foreach (var op in service.GetDocumentsAsync("test"))
         {
             opinions.Add(op);
         }
