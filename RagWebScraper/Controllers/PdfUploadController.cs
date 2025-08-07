@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using RagWebScraper.Models;
 using RagWebScraper.Services;
+using Microsoft.Extensions.Options;
 
 [ApiController]
 [Route("api/pdf")]
@@ -20,6 +21,8 @@ public class PdfUploadController : ControllerBase
     private readonly IKeywordContextSentimentService _keywordContextSentimentService;
     private readonly IChunkIngestorService _chunkIngestor;
     private readonly IPdfProcessingQueue _queue;
+    private readonly long _maxFileSize;
+    private readonly long _maxRequestSize;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PdfUploadController"/> class.
@@ -33,7 +36,8 @@ public class PdfUploadController : ControllerBase
         IKeywordExtractor keywordExtractor,
         IKeywordContextSentimentService keywordContextSentimentService,
         IChunkIngestorService chunkIngestor,
-        IPdfProcessingQueue queue)
+        IPdfProcessingQueue queue,
+        IOptions<FileUploadOptions> uploadOptions)
     {
         _extractor = extractor;
         _sentiment = sentiment;
@@ -44,6 +48,8 @@ public class PdfUploadController : ControllerBase
         _keywordContextSentimentService = keywordContextSentimentService;
         _chunkIngestor = chunkIngestor;
         _queue = queue;
+        _maxFileSize = uploadOptions.Value.MaxFileSize;
+        _maxRequestSize = uploadOptions.Value.MaxRequestSize;
     }
 
     /// <summary>
@@ -61,6 +67,9 @@ public class PdfUploadController : ControllerBase
         if (files == null || files.Count == 0)
             return BadRequest("No files uploaded.");
 
+        if (files.Sum(f => f.Length) > _maxRequestSize)
+            return BadRequest($"Total upload size exceeds {_maxRequestSize} bytes.");
+
         var keywordList = keywords?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)?.ToList()
                            ?? new List<string>();
 
@@ -68,6 +77,9 @@ public class PdfUploadController : ControllerBase
         {
             if (!file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
                 continue;
+
+            if (file.Length > _maxFileSize)
+                return BadRequest($"File {file.FileName} exceeds maximum size {_maxFileSize} bytes.");
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}");
             await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
