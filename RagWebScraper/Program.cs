@@ -18,14 +18,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Static & Request Limits
 // ---------------------------------------------
 builder.WebHost.UseStaticWebAssets();
+var uploadOpts = builder.Configuration.GetSection("FileUpload").Get<FileUploadOptions>() ?? new();
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 1_073_741_824; // 1 GB
+    options.Limits.MaxRequestBodySize = uploadOpts.MaxRequestSize;
 });
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 1_073_741_824; // 1 GB
+    options.MultipartBodyLengthLimit = uploadOpts.MaxRequestSize;
+    options.ValueCountLimit = 10_000; // allow large numbers of files
 });
+builder.Services.Configure<FileUploadOptions>(builder.Configuration.GetSection("FileUpload"));
 
 // ---------------------------------------------
 // Blazorise

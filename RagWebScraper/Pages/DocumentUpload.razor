@@ -1,4 +1,5 @@
 @page "/upload"
+@page "/analyze"
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AppStateService AppState
@@ -10,8 +11,9 @@
 @using System.Text
 @using System.Timers
 @using RagWebScraper.Models
+@using System.Linq
 
-<h3 class="mb-3 text-primary">Upload Documents or URLs</h3>
+<h3 class="mb-3 text-primary">Analyze & Upload Content</h3>
 <p>
     Paste website URLs or select PDF/JSON files below. Provide keywords to analyze.
     Uploaded content will be processed and results will appear once analysis completes.
@@ -202,10 +204,36 @@
     private bool showUrlKeyword = true;
     private bool showPdfSentiment = true;
     private bool showPdfKeyword = true;
+    private const long MaxFileSizeBytes = 1L * 1024 * 1024 * 1024; // 1 GB per file
+    private const long MaxTotalUploadBytes = 10L * 1024 * 1024 * 1024; // 10 GB total
+    private const int MaxFileCount = 1000; // Allow up to 1000 files per upload
 
     private void HandleFileSelection(InputFileChangeEventArgs e)
     {
-        selectedFiles = e.GetMultipleFiles();
+        var files = e.GetMultipleFiles(int.MaxValue);
+        if (files.Count > MaxFileCount)
+        {
+            selectedFiles = Array.Empty<IBrowserFile>();
+            uploadStatus = $"Cannot upload more than {MaxFileCount} files at once.";
+            return;
+        }
+
+        if (files.Sum(f => f.Size) > MaxTotalUploadBytes)
+        {
+            selectedFiles = Array.Empty<IBrowserFile>();
+            uploadStatus = $"Total upload size exceeds {MaxTotalUploadBytes / (1024 * 1024)} MB.";
+            return;
+        }
+
+        var oversize = files.FirstOrDefault(f => f.Size > MaxFileSizeBytes);
+        if (oversize != null)
+        {
+            selectedFiles = Array.Empty<IBrowserFile>();
+            uploadStatus = $"File {oversize.Name} exceeds {MaxFileSizeBytes / (1024 * 1024)} MB.";
+            return;
+        }
+
+        selectedFiles = files;
         uploadStatus = null;
     }
 
@@ -255,12 +283,24 @@
 
     private async Task UploadFiles()
     {
+        if (selectedFiles.Sum(f => f.Size) > MaxTotalUploadBytes)
+        {
+            uploadStatus = $"Total upload size exceeds {MaxTotalUploadBytes / (1024 * 1024)} MB.";
+            return;
+        }
+
         var pdfForm = new MultipartFormDataContent();
         var jsonForm = new MultipartFormDataContent();
 
         foreach (var file in selectedFiles)
         {
-            var stream = file.OpenReadStream(1_073_741_824);
+            if (file.Size > MaxFileSizeBytes)
+            {
+                uploadStatus = $"File {file.Name} exceeds {MaxFileSizeBytes / (1024 * 1024)} MB.";
+                return;
+            }
+
+            var stream = file.OpenReadStream(MaxFileSizeBytes);
             var content = new StreamContent(stream);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
             if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
