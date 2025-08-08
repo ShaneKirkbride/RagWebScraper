@@ -289,8 +289,8 @@
             return;
         }
 
-        var pdfForm = new MultipartFormDataContent();
-        var jsonForm = new MultipartFormDataContent();
+        using var pdfForm = new MultipartFormDataContent();
+        using var jsonForm = new MultipartFormDataContent();
 
         foreach (var file in selectedFiles)
         {
