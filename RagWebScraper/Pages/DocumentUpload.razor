@@ -283,14 +283,19 @@
 
     private async Task UploadFiles()
     {
+        uploadStatus = null;
+
         if (selectedFiles.Sum(f => f.Size) > MaxTotalUploadBytes)
         {
             uploadStatus = $"Total upload size exceeds {MaxTotalUploadBytes / (1024 * 1024)} MB.";
             return;
         }
 
-        using var pdfForm = new MultipartFormDataContent();
-        using var jsonForm = new MultipartFormDataContent();
+        // Make sure we don't timeout on large uploads
+        Http.Timeout = Timeout.InfiniteTimeSpan;
+
+        uploadedPdfNames.Clear();
+        var pdfPosted = false;
 
         foreach (var file in selectedFiles)
         {
@@ -300,50 +305,63 @@
                 return;
             }
 
-            var stream = file.OpenReadStream(MaxFileSizeBytes);
+            // fresh form for each file
+            using var form = new MultipartFormDataContent();
+
+            // open a new stream per file
+            using var stream = file.OpenReadStream(MaxFileSizeBytes);
             var content = new StreamContent(stream);
-            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            // Optional: helps servers that want to know expected length
+            content.Headers.ContentLength = file.Size;
+
+            form.Add(content, "files", file.Name);
+            form.Add(new StringContent(searchTerms ?? string.Empty), "keywords");
+
+            HttpResponseMessage response;
             if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
             {
-                pdfForm.Add(content, "files", file.Name);
-                uploadedPdfNames.Add(file.Name);
+                response = await Http.PostAsync(Navigation.BaseUri + "api/pdf/analyze", form);
+                if (response.IsSuccessStatusCode)
+                {
+                    uploadedPdfNames.Add(file.Name);
+                    pdfPosted = true;
+                }
+                else
+                {
+                    uploadStatus = $"PDF upload failed for {file.Name}: {response.ReasonPhrase}";
+                    return;
+                }
             }
             else if (file.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                jsonForm.Add(content, "files", file.Name);
-            }
-        }
-
-        if (pdfForm.Count() > 0)
-        {
-            pdfForm.Add(new StringContent(searchTerms), "keywords");
-            var response = await Http.PostAsync(Navigation.BaseUri + "api/pdf/analyze", pdfForm);
-            if (response.IsSuccessStatusCode)
-            {
-                uploadStatus = "Files uploaded and queued for processing.";
-                StartPolling();
-            }
-            else
-            {
-                uploadStatus = $"PDF upload failed: {response.ReasonPhrase}";
-            }
-        }
-
-        if (jsonForm.Count() > 0)
-        {
-            jsonForm.Add(new StringContent(searchTerms), "keywords");
-            var response = await Http.PostAsync(Navigation.BaseUri + "api/documents/analyze", jsonForm);
-            if (response.IsSuccessStatusCode)
-            {
-                var results = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];
-                AppState.SetJsonResults(results);
+                response = await Http.PostAsync(Navigation.BaseUri + "api/documents/analyze", form);
+                if (response.IsSuccessStatusCode)
+                {
+                    var results = await response.Content.ReadFromJsonAsync<List<AnalysisResult>>() ?? [];
+                    AppState.SetJsonResults(results);
+                }
+                else
+                {
+                    uploadStatus = $"JSON upload failed for {file.Name}: {response.ReasonPhrase}";
+                    return;
+                }
             }
             else
             {
-                uploadStatus = $"JSON upload failed: {response.ReasonPhrase}";
+                // skip unknown types
+                continue;
             }
+        }
+
+        if (pdfPosted)
+        {
+            uploadStatus = "Files uploaded and queued for processing.";
+            StartPolling();
         }
     }
+
 
     private void StartPolling()
     {
