@@ -21,14 +21,28 @@
     </div>
 </div>
 
-@if (results != null && results.Any())
+@if (queryResponse?.Results != null && queryResponse.Results.Any())
 {
     <h4>Top Retrieved Chunks:</h4>
-    @foreach (var result in results)
+    @foreach (var result in queryResponse.Results)
     {
         <div class="card mb-2">
             <div class="card-body">
-                <div class="text-wrap" style="white-space: pre-wrap;">@result</div>
+                <div class="text-wrap" style="white-space: pre-wrap;">@result.ChunkText</div>
+                @if (!string.IsNullOrEmpty(result.Source))
+                {
+                    <div class="mt-2"><strong>Source:</strong> @result.Source</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(queryResponse.Commentary))
+    {
+        <h4>AI Commentary:</h4>
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="text-wrap" style="white-space: pre-wrap;">@queryResponse.Commentary</div>
             </div>
         </div>
     }
@@ -37,7 +51,7 @@
 
 @code {
     private string? userQuery;
-    private List<string>? results;
+    private RAGQueryResponse? queryResponse;
 
     private async Task QueryRagAsync()
     {
@@ -54,15 +68,27 @@
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
                 Console.WriteLine($"Error from API: {response.StatusCode} - {errorContent}");
-                results = new List<string> { $"Error: {response.StatusCode} - {errorContent}" };
+                queryResponse = new RAGQueryResponse
+                {
+                    Results = new List<RAGQueryResult>
+                    {
+                        new() { ChunkText = $"Error: {response.StatusCode} - {errorContent}" }
+                    }
+                };
                 return;
             }
 
-            results = await response.Content.ReadFromJsonAsync<List<string>>();
+            queryResponse = await response.Content.ReadFromJsonAsync<RAGQueryResponse>();
         }
         catch (Exception ex)
         {
-            results = new List<string> { $"Error querying RAG: {ex.Message}" };
+            queryResponse = new RAGQueryResponse
+            {
+                Results = new List<RAGQueryResult>
+                {
+                    new() { ChunkText = $"Error querying RAG: {ex.Message}" }
+                }
+            };
         }
     }
 }
