@@ -14,7 +14,7 @@ public class RAGQueryController : ControllerBase
     }
 
     [HttpPost("query")]
-    public async Task<ActionResult<List<string>>> QueryRag([FromBody] RAGQueryRequest request)
+    public async Task<ActionResult<RAGQueryResponse>> QueryRag([FromBody] RAGQueryRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Query))
             return BadRequest("Query cannot be empty.");
