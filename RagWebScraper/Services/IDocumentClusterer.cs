@@ -12,7 +12,7 @@ namespace RagWebScraper.Services
         /// </summary>
         /// <param name="documents">Documents to cluster.</param>
         /// <param name="numberOfClusters">Desired number of clusters.</param>
-        /// <returns>Mapping of document ID to cluster ID.</returns>
-        Task<Dictionary<Guid, int>> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5);
+        /// <returns>Cluster assignments and associated metrics.</returns>
+        Task<DocumentClusteringResult> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5);
     }
 }

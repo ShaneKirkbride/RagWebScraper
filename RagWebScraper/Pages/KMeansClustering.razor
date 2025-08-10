@@ -48,12 +48,21 @@
     </div>
 </div>
 
-@if (clusterResults?.Any() == true)
+@if (clusterResult?.Clusters.Any() == true)
 {
     <h4 class="text-success">Results</h4>
-    <ClusterChart Results="clusterResults" />
+    <ClusterChart Results="clusterResult.Clusters" />
 
-    @foreach (var group in clusterResults.GroupBy(r => r.Value))
+    <div class="mb-3">
+        <h5>Metrics</h5>
+        <ul>
+            <li>Average Distance: @clusterResult.Metrics.AverageDistance</li>
+            <li>Davies-Bouldin Index: @clusterResult.Metrics.DaviesBouldinIndex</li>
+            <li>Normalized Mutual Information: @clusterResult.Metrics.NormalizedMutualInformation</li>
+        </ul>
+    </div>
+
+    @foreach (var group in clusterResult.Clusters.GroupBy(r => r.Value))
     {
         <div class="mb-3">
             <h5>Cluster @group.Key</h5>
@@ -69,7 +78,7 @@
 
 @code {
     private int clusterCount = 3;
-    private Dictionary<Guid, int>? clusterResults;
+    private DocumentClusteringResult? clusterResult;
     private string? errorMessage;
     private readonly Dictionary<Guid, string> docLabels = new();
     private List<IBrowserFile> selectedFiles = new();
@@ -138,18 +147,18 @@
 
         if (documents.Count == 0)
         {
-            clusterResults = null;
+            clusterResult = null;
             errorMessage = null;
             return;
         }
         try
         {
-            clusterResults = await Clusterer.ClusterAsync(documents, clusterCount);
+            clusterResult = await Clusterer.ClusterAsync(documents, clusterCount);
             errorMessage = null;
         }
         catch (InvalidOperationException ex)
         {
-            clusterResults = null;
+            clusterResult = null;
             errorMessage = ex.Message;
         }
     }

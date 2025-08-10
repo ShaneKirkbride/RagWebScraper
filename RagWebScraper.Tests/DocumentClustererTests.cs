@@ -21,8 +21,8 @@ public class DocumentClustererTests
         IDocumentClusterer clusterer = new TfidfKMeansClusterer();
         var result = await clusterer.ClusterAsync(docs, numberOfClusters: 2);
 
-        Assert.Equal(docs.Length, result.Count);
-        var unique = new HashSet<int>(result.Values);
+        Assert.Equal(docs.Length, result.Clusters.Count);
+        var unique = new HashSet<int>(result.Clusters.Values);
         Assert.Equal(2, unique.Count);
     }
 
@@ -85,5 +85,24 @@ public class DocumentClustererTests
         IDocumentClusterer clusterer = new TfidfKMeansClusterer();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => clusterer.ClusterAsync(docs, 3));
+
+    }
+
+    [Fact]
+    public async Task ClusterAsync_ReturnsMetrics()
+    {
+        var docs = new[]
+        {
+            new Document(Guid.NewGuid(), "Cat"),
+            new Document(Guid.NewGuid(), "Dog"),
+            new Document(Guid.NewGuid(), "Feline"),
+            new Document(Guid.NewGuid(), "Canine")
+        };
+
+        IDocumentClusterer clusterer = new TfidfKMeansClusterer();
+        var result = await clusterer.ClusterAsync(docs, numberOfClusters: 2);
+
+        Assert.True(result.Metrics.AverageDistance > 0);
+        Assert.True(result.Metrics.DaviesBouldinIndex >= 0);
     }
 }

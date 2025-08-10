@@ -18,10 +18,11 @@ public class KMeansClusteringPageTests
     {
         public List<Document>? ReceivedDocs { get; private set; }
         public int ReceivedK { get; private set; }
-        public Dictionary<Guid, int> Result { get; set; } = new();
+        public DocumentClusteringResult Result { get; set; } =
+            new(new Dictionary<Guid, int>(), new ClusterMetrics(0, 0, 0));
         public Exception? ExceptionToThrow { get; set; }
 
-        public Task<Dictionary<Guid, int>> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5)
+        public Task<DocumentClusteringResult> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5)
         {
             ReceivedDocs = documents.ToList();
             ReceivedK = numberOfClusters;
@@ -102,13 +103,17 @@ public class KMeansClusteringPageTests
         Assert.Equal("Alpha", clusterer.ReceivedDocs[0].Text);
         Assert.Equal("Beta", clusterer.ReceivedDocs[1].Text);
         Assert.Equal(2, clusterer.ReceivedK);
-        Assert.Same(clusterer.Result, GetPrivateField(page, "clusterResults"));
+        var pageResult = (DocumentClusteringResult)GetPrivateField(page, "clusterResult");
+        Assert.Same(clusterer.Result, pageResult);
     }
 
     [Fact]
     public async Task ClusterDocs_NoDocumentsClearsResults()
     {
-        var clusterer = new StubClusterer { Result = new() { { Guid.NewGuid(), 1 } } };
+        var clusterer = new StubClusterer
+        {
+            Result = new DocumentClusteringResult(new() { { Guid.NewGuid(), 1 } }, new ClusterMetrics(0, 0, 0))
+        };
         var page = new RagWebScraper.Pages.KMeansClustering();
         page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, clusterer);
@@ -120,7 +125,7 @@ public class KMeansClusteringPageTests
         SetPrivateField(page, "selectedFiles", new List<IBrowserFile>());
         await InvokePrivateMethod(page, "ClusterDocs");
 
-        Assert.Null(GetPrivateField(page, "clusterResults"));
+        Assert.Null(GetPrivateField(page, "clusterResult"));
     }
 
     [Fact]
@@ -144,7 +149,7 @@ public class KMeansClusteringPageTests
 
         await InvokePrivateMethod(page, "ClusterDocs");
 
-        Assert.Null(GetPrivateField(page, "clusterResults"));
+        Assert.Null(GetPrivateField(page, "clusterResult"));
         Assert.Equal("too few", GetPrivateField(page, "errorMessage"));
     }
 
@@ -153,7 +158,8 @@ public class KMeansClusteringPageTests
     {
         var page = new RagWebScraper.Pages.KMeansClustering();
         var results = new Dictionary<Guid, int> { [Guid.NewGuid()] = 0 };
-        SetPrivateField(page, "clusterResults", results);
+        var clusteringResult = new DocumentClusteringResult(results, new ClusterMetrics(0, 0, 0));
+        SetPrivateField(page, "clusterResult", clusteringResult);
         var builder = new RenderTreeBuilder();
         var method = page.GetType().GetMethod("BuildRenderTree", BindingFlags.Instance | BindingFlags.NonPublic)!;
 

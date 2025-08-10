@@ -18,14 +18,15 @@ namespace RagWebScraper.Services
             _mlContext = new MLContext(seed: 1);
         }
 
-        public Task<Dictionary<Guid, int>> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5)
+        public Task<DocumentClusteringResult> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5)
         {
             if (documents == null)
                 throw new ArgumentNullException(nameof(documents));
 
             var documentList = documents.ToList();
             if (documentList.Count == 0)
-                return Task.FromResult(new Dictionary<Guid, int>());
+                return Task.FromResult(
+                    new DocumentClusteringResult(new Dictionary<Guid, int>(), new ClusterMetrics(0, 0, 0)));
 
             if (documentList.Count < numberOfClusters)
                 throw new InvalidOperationException(
@@ -47,13 +48,24 @@ namespace RagWebScraper.Services
             var model = pipeline.Fit(dataView);
             var predictions = model.Transform(dataView);
 
-            var predictedClusters = _mlContext.Data.CreateEnumerable<ClusterPrediction>(predictions, reuseRowObject: false).ToList();
+            var metrics = _mlContext.Clustering.Evaluate(predictions, scoreColumnName: "Score", featureColumnName: "Features");
 
-            var result = new Dictionary<Guid, int>(documentList.Count);
+            var predictedClusters = _mlContext.Data
+                .CreateEnumerable<ClusterPrediction>(predictions, reuseRowObject: false)
+                .ToList();
+
+            var assignments = new Dictionary<Guid, int>(documentList.Count);
             for (int i = 0; i < documentList.Count; i++)
             {
-                result[documentList[i].Id] = (int)predictedClusters[i].PredictedLabel;
+                assignments[documentList[i].Id] = (int)predictedClusters[i].PredictedLabel;
             }
+
+            var clusterMetrics = new ClusterMetrics(
+                metrics.AverageDistance,
+                metrics.DaviesBouldinIndex,
+                metrics.NormalizedMutualInformation);
+
+            var result = new DocumentClusteringResult(assignments, clusterMetrics);
 
             return Task.FromResult(result);
         }
