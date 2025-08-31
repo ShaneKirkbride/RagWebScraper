@@ -24,6 +24,7 @@ public class DocumentClustererTests
         Assert.Equal(docs.Length, result.Clusters.Count);
         var unique = new HashSet<int>(result.Clusters.Values);
         Assert.Equal(2, unique.Count);
+        Assert.Equal(2, result.Descriptors.Count);
     }
 
     [Fact]
@@ -104,5 +105,6 @@ public class DocumentClustererTests
 
         Assert.True(result.Metrics.AverageDistance > 0);
         Assert.True(result.Metrics.DaviesBouldinIndex >= 0);
+        Assert.Equal(2, result.Descriptors.Count);
     }
 }

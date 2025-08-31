@@ -19,7 +19,7 @@ public class KMeansClusteringPageTests
         public List<Document>? ReceivedDocs { get; private set; }
         public int ReceivedK { get; private set; }
         public DocumentClusteringResult Result { get; set; } =
-            new(new Dictionary<Guid, int>(), new ClusterMetrics(0, 0, 0));
+            new(new Dictionary<Guid, int>(), new ClusterMetrics(0, 0, 0), new List<ClusterDescriptor>());
         public Exception? ExceptionToThrow { get; set; }
 
         public Task<DocumentClusteringResult> ClusterAsync(IEnumerable<Document> documents, int numberOfClusters = 5)
@@ -112,7 +112,7 @@ public class KMeansClusteringPageTests
     {
         var clusterer = new StubClusterer
         {
-            Result = new DocumentClusteringResult(new() { { Guid.NewGuid(), 1 } }, new ClusterMetrics(0, 0, 0))
+            Result = new DocumentClusteringResult(new() { { Guid.NewGuid(), 1 } }, new ClusterMetrics(0, 0, 0), new List<ClusterDescriptor>())
         };
         var page = new RagWebScraper.Pages.KMeansClustering();
         page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -158,7 +158,7 @@ public class KMeansClusteringPageTests
     {
         var page = new RagWebScraper.Pages.KMeansClustering();
         var results = new Dictionary<Guid, int> { [Guid.NewGuid()] = 0 };
-        var clusteringResult = new DocumentClusteringResult(results, new ClusterMetrics(0, 0, 0));
+        var clusteringResult = new DocumentClusteringResult(results, new ClusterMetrics(0, 0, 0), new List<ClusterDescriptor>());
         SetPrivateField(page, "clusterResult", clusteringResult);
         var builder = new RenderTreeBuilder();
         var method = page.GetType().GetMethod("BuildRenderTree", BindingFlags.Instance | BindingFlags.NonPublic)!;
