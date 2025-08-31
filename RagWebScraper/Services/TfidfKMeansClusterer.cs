@@ -1,6 +1,7 @@
 using Microsoft.ML;
 using Microsoft.ML.Transforms.Text;
 using System.Linq;
+using System.Text.RegularExpressions;
 using RagWebScraper.Models;
 
 namespace RagWebScraper.Services
@@ -26,7 +27,7 @@ namespace RagWebScraper.Services
             var documentList = documents.ToList();
             if (documentList.Count == 0)
                 return Task.FromResult(
-                    new DocumentClusteringResult(new Dictionary<Guid, int>(), new ClusterMetrics(0, 0, 0)));
+                    new DocumentClusteringResult(new Dictionary<Guid, int>(), new ClusterMetrics(0, 0, 0), new List<ClusterDescriptor>()));
 
             if (documentList.Count < numberOfClusters)
                 throw new InvalidOperationException(
@@ -65,7 +66,21 @@ namespace RagWebScraper.Services
                 metrics.DaviesBouldinIndex,
                 metrics.NormalizedMutualInformation);
 
-            var result = new DocumentClusteringResult(assignments, clusterMetrics);
+            var clusterDescriptors = predictedClusters
+                .Select((pred, idx) => new { Document = documentList[idx], Cluster = (int)pred.PredictedLabel })
+                .GroupBy(x => x.Cluster)
+                .Select(g =>
+                {
+                    var topWords = GetTopWords(g.Select(x => x.Document)).ToList();
+                    var reason = topWords.Any()
+                        ? $"Documents share terms: {string.Join(", ", topWords)}"
+                        : "Insufficient data to derive keywords";
+                    return new ClusterDescriptor(g.Key, topWords, reason);
+                })
+                .OrderBy(d => d.ClusterId)
+                .ToList();
+
+            var result = new DocumentClusteringResult(assignments, clusterMetrics, clusterDescriptors);
 
             return Task.FromResult(result);
         }
@@ -78,6 +93,34 @@ namespace RagWebScraper.Services
         private class DocumentData
         {
             public string Text { get; set; } = string.Empty;
+        }
+
+        private static readonly HashSet<string> _stopWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "the", "is", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with"
+        };
+
+        private static IEnumerable<string> GetTopWords(IEnumerable<Document> documents, int top = 5)
+        {
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var doc in documents)
+            {
+                foreach (Match match in Regex.Matches(doc.Text, "\\b[\\w']+\\b"))
+                {
+                    var word = match.Value.ToLowerInvariant();
+                    if (word.Length < 3 || _stopWords.Contains(word))
+                        continue;
+
+                    counts[word] = counts.TryGetValue(word, out var c) ? c + 1 : 1;
+                }
+            }
+
+            return counts
+                .OrderByDescending(kv => kv.Value)
+                .ThenBy(kv => kv.Key)
+                .Take(top)
+                .Select(kv => kv.Key);
         }
     }
 }

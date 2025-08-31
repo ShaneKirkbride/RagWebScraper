@@ -4,6 +4,7 @@
 @inject ITextExtractor TextExtractor
 @using RagWebScraper.Models
 @using Microsoft.AspNetCore.Components.Forms
+@using System.Linq
 
 @implements IDisposable
 
@@ -64,8 +65,14 @@
 
     @foreach (var group in clusterResult.Clusters.GroupBy(r => r.Value))
     {
+        var descriptor = clusterResult.Descriptors.FirstOrDefault(d => d.ClusterId == group.Key);
         <div class="mb-3">
             <h5>Cluster @group.Key</h5>
+            @if (descriptor is not null)
+            {
+                <p><strong>Reason:</strong> @descriptor.Reason</p>
+                <p><strong>Top Words:</strong> @string.Join(", ", descriptor.TopWords)</p>
+            }
             <ul>
                 @foreach (var doc in group)
                 {
