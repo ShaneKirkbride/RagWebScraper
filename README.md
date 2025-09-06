@@ -96,6 +96,7 @@ All major services and controllers include XML documentation comments. IntelliSe
 2. Upload `.txt` or `.pdf` files to use as documents
 3. Optionally include previously analyzed URLs or PDFs
 4. Choose the desired number of clusters and press **Cluster**
+   - Clustering uses a BERTopic-based model to derive topics and top keywords.
 
 ---
 

@@ -73,7 +73,7 @@ builder.Services.AddSingleton<IKeywordContextSentimentService, KeywordContextSen
 builder.Services.AddSingleton<KeywordSentimentSummaryService>();
 builder.Services.AddSingleton<IChatCompletionService, OpenAIChatCompletionService>();
 builder.Services.AddSingleton<IPageAnalyzerService, PageAnalyzerService>();
-builder.Services.AddSingleton<IDocumentClusterer, TfidfKMeansClusterer>();
+builder.Services.AddSingleton<IDocumentClusterer, BertTopicClusterer>();
 builder.Services.AddSingleton<ICourtOpinionAnalyzerService, CourtOpinionAnalyzerService>();
 builder.Services.AddSingleton<IJsonIngestService, JsonIngestService>();
 
