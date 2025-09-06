@@ -12,7 +12,7 @@ using Xunit;
 
 namespace RagWebScraper.Tests;
 
-public class KMeansClusteringPageTests
+public class BertTopicClusteringPageTests
 {
     private class StubClusterer : IDocumentClusterer
     {
@@ -81,7 +81,7 @@ public class KMeansClusteringPageTests
     public async Task ClusterDocs_ReadsFilesAndCallsClusterer()
     {
         var clusterer = new StubClusterer();
-        var page = new RagWebScraper.Pages.KMeansClustering();
+        var page = new RagWebScraper.Pages.BertTopicClustering();
         page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, clusterer);
         page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -114,7 +114,7 @@ public class KMeansClusteringPageTests
         {
             Result = new DocumentClusteringResult(new() { { Guid.NewGuid(), 1 } }, new ClusterMetrics(0, 0, 0), new List<ClusterDescriptor>())
         };
-        var page = new RagWebScraper.Pages.KMeansClustering();
+        var page = new RagWebScraper.Pages.BertTopicClustering();
         page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, clusterer);
         page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -135,7 +135,7 @@ public class KMeansClusteringPageTests
         {
             ExceptionToThrow = new InvalidOperationException("too few")
         };
-        var page = new RagWebScraper.Pages.KMeansClustering();
+        var page = new RagWebScraper.Pages.BertTopicClustering();
         page.GetType().GetProperty("Clusterer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(page, clusterer);
         page.GetType().GetProperty("AppState", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -156,7 +156,7 @@ public class KMeansClusteringPageTests
     [Fact]
     public void BuildRenderTree_IgnoresMissingLabels()
     {
-        var page = new RagWebScraper.Pages.KMeansClustering();
+        var page = new RagWebScraper.Pages.BertTopicClustering();
         var results = new Dictionary<Guid, int> { [Guid.NewGuid()] = 0 };
         var clusteringResult = new DocumentClusteringResult(results, new ClusterMetrics(0, 0, 0), new List<ClusterDescriptor>());
         SetPrivateField(page, "clusterResult", clusteringResult);
