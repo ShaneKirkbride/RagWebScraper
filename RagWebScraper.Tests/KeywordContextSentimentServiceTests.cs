@@ -22,4 +22,16 @@ public class KeywordContextSentimentServiceTests
         Assert.True(result["apple"] < result["banana"]);
         Assert.Equal(1f, result["banana"], 1);
     }
+
+    [Fact]
+    public void ExtractKeywordSentiments_IgnoresSubstringMatches()
+    {
+        var service = new KeywordContextSentimentService(new StubSentiment());
+        var text = "The cart is slow. The art is good.";
+        var keywords = new List<string> { "art" };
+
+        var result = service.ExtractKeywordSentiments(text, keywords);
+
+        Assert.Equal(1f, result["art"]);
+    }
 }

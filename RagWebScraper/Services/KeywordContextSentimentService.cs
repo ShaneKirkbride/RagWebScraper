@@ -1,5 +1,11 @@
-﻿namespace RagWebScraper.Services
+using System.Text.RegularExpressions;
+
+namespace RagWebScraper.Services
 {
+    /// <summary>
+    /// Determines sentiment for each keyword by averaging the sentiment scores of
+    /// sentences containing the keyword.
+    /// </summary>
     public class KeywordContextSentimentService : IKeywordContextSentimentService
     {
         private readonly ISentimentAnalyzer _sentimentAnalyzer;
@@ -17,8 +23,10 @@
 
             foreach (var keyword in keywords)
             {
+                // Use word boundaries to avoid matching substrings (e.g. "art" in "cart")
+                var pattern = $"\\b{Regex.Escape(keyword)}\\b";
                 var relevantSentences = sentences
-                    .Where(s => s.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    .Where(s => Regex.IsMatch(s, pattern, RegexOptions.IgnoreCase))
                     .ToList();
 
                 if (!relevantSentences.Any())
@@ -38,3 +46,4 @@
         }
     }
 }
+
